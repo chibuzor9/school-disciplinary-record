@@ -1,4 +1,4 @@
-import express, { json } from 'express';
+import express from 'express';
 import { createConnection } from 'mysql2/promise';
 import cors from 'cors';
 
@@ -6,7 +6,7 @@ const app = express();
 const PORT = 5000;
 
 app.use(cors());
-app.use(json());
+app.use(express.json());
 
 let db;
 
@@ -17,7 +17,7 @@ async function connectToDatabase() {
 			host: 'localhost',
 			user: 'root',
 			password: '',
-			database: 'db_class',
+			database: 'disciplinary',
 		});
 		console.log('Connected to MySQL database');
 	} catch (err) {
@@ -28,11 +28,11 @@ async function connectToDatabase() {
 // Initialize database connection
 connectToDatabase();
 
-// Student-related routes
-app.get('/api/group', async (req, res) => {
+// Student routes
+app.get('/api/students', async (req, res) => {
 	try {
 		const [results] = await db.query(
-			'SELECT * FROM grp_a',
+			'SELECT * FROM STUDENTS',
 		);
 		res.json(
 			results.length ? results : dummyData.students,
@@ -43,112 +43,102 @@ app.get('/api/group', async (req, res) => {
 	}
 });
 
-app.get('/api/incidents', async (req, res) => {
-	try {
-		res.json(dummyIncidents.incidents);
-	} catch (err) {
-		console.error('Error fetching students:', err);
-		res.status(500).json({ error: 'Database error' });
-	}
-});
-
-/** 
-
-Incidents routes
+// Incident routes
 app.get('/api/incidents', async (req, res) => {
 	try {
 		const [results] = await db.query(
-			'SELECT * FROM incidents',
+			'SELECT * FROM INCIDENTS',
 		);
-		res.json(results.length ? results : dummyIncidents);
+		res.json(
+			results.length ? results : dummyData.incidents,
+		);
 	} catch (err) {
 		console.error('Error fetching incidents:', err);
 		res.status(500).json({ error: 'Database error' });
 	}
 });
 
-// Staff routes
-app.get('/api/staff', async (req, res) => {
+// Disciplinary Record routes
+app.get('/api/disciplinary-records', async (req, res) => {
 	try {
 		const [results] = await db.query(
-			'SELECT * FROM staff',
+			'SELECT * FROM DISCIPLINARYRECORDS',
 		);
-		res.json(results.length ? results : dummyStaff);
+		res.json(
+			results.length
+				? results
+				: dummyData.disciplinaryRecords,
+		);
 	} catch (err) {
-		console.error('Error fetching staff:', err);
+		console.error(
+			'Error fetching disciplinary records:',
+			err,
+		);
 		res.status(500).json({ error: 'Database error' });
 	}
 });
 
-// Appeals routes
+// Disciplinary Action routes
+app.get('/api/disciplinary-actions', async (req, res) => {
+	try {
+		const [results] = await db.query(
+			'SELECT * FROM DISCIPLINARYACTIONS',
+		);
+		res.json(
+			results.length
+				? results
+				: dummyData.disciplinaryActions,
+		);
+	} catch (err) {
+		console.error(
+			'Error fetching disciplinary actions:',
+			err,
+		);
+		res.status(500).json({ error: 'Database error' });
+	}
+});
+
+/** 
+
+// Admin routes
+app.get('/api/admins', async (req, res) => {
+	try {
+		const [results] = await db.query(
+			'SELECT * FROM ADMIN',
+		);
+		res.json(
+			results.length ? results : dummyData.admins,
+		);
+	} catch (err) {
+		console.error('Error fetching admins:', err);
+		res.status(500).json({ error: 'Database error' });
+	}
+});
+
+*/
+
+// Appeal routes
 app.get('/api/appeals', async (req, res) => {
 	try {
 		const [results] = await db.query(
-			'SELECT * FROM appeals',
+			'SELECT * FROM APPEAL',
 		);
-		res.json(results.length ? results : dummyAppeals);
+		res.json(
+			results.length ? results : dummyData.appeals,
+		);
 	} catch (err) {
 		console.error('Error fetching appeals:', err);
 		res.status(500).json({ error: 'Database error' });
 	}
 });
 
-// Login route
-app.post('/api/login', async (req, res) => {
-	const { username, password } = req.body;
-	try {
-		const [results] = await db.query(
-			'SELECT * FROM users WHERE username = ? AND password = ?',
-			[username, password],
-		);
-
-		if (results.length > 0) {
-			res.json({ success: true, user: results[0] });
-		} else {
-			res.status(401).json({
-				success: false,
-				message: 'Invalid credentials',
-			});
-		}
-	} catch (err) {
-		console.error('Login error:', err);
-		res.status(500).json({ error: 'Database error' });
-	}
-});
-
-// Disciplinary Actions routes
-app.get('/api/actions', async (req, res) => {
-	try {
-		const [results] = await db.query(
-			'SELECT * FROM disciplinary_actions',
-		);
-		res.json(results.length ? results : dummyActions);
-	} catch (err) {
-		console.error('Error fetching actions:', err);
-		res.status(500).json({ error: 'Database error' });
-	}
-});
-
 // Submit Appeal route
 app.post('/api/submit-appeal', async (req, res) => {
-	const {
-		student_id,
-		incident_id,
-		appeal_text,
-		guardian_name,
-		guardian_contact,
-	} = req.body;
+	const { appeal_name, appeal_rsn, appeal_se } = req.body;
 	try {
 		const [result] = await db.query(
-			'INSERT INTO appeals (student_id, incident_id, appeal_text, guardian_name, guardian_contact, status) VALUES (?, ?, ?, ?, ?, ?)',
-			[
-				student_id,
-				incident_id,
-				appeal_text,
-				guardian_name,
-				guardian_contact,
-				'Pending',
-			],
+			'INSERT INTO APPEAL (appeal_name, appeal_rsn, appeal_se) VALUES (?, ?, ?)',
+			[appeal_name, appeal_rsn, appeal_se],
 		);
 
 		res.json({
@@ -162,88 +152,103 @@ app.post('/api/submit-appeal', async (req, res) => {
 	}
 });
 
-*/
-
 const dummyData = {
 	students: [
 		{
-			student_id: 'ST001',
-			name: 'John Doe',
-			cgpa: '3.5',
+			id: 'STU001',
+			first_name: 'John',
+			last_name: 'Doe',
+			date_of_birth: '2000-01-15',
+			email: 'john.doe@email.com',
+			parent_no: '1234567890',
 		},
 		{
-			student_id: 'ST002',
-			name: 'Jane Smith',
-			cgpa: '3.8',
+			id: 'STU002',
+			first_name: 'Jane',
+			last_name: 'Smith',
+			date_of_birth: '2001-03-22',
+			email: 'jane.smith@email.com',
+			parent_no: '2345678901',
+		},
+	],
+	incidents: [
+		{
+			id: 'INC001',
+			inc_name: 'Tardiness',
+			inc_date: '2023-05-15',
+			inc_loc: 'Main Building',
+			inc_sl: 'Low',
+		},
+		{
+			id: 'INC002',
+			inc_name: 'Cheating',
+			inc_date: '2023-05-18',
+			inc_loc: 'Exam Hall',
+			inc_sl: 'High',
+		},
+	],
+	disciplinaryRecords: [
+		{
+			id: 'DISR001',
+			disr_des: 'First offense',
+			disr_status: 'Active',
+			student_id: 'STU001',
+			incident_id: 'INC001',
+		},
+		{
+			id: 'DISR002',
+			disr_des: 'Repeated offense',
+			disr_status: 'Active',
+			student_id: 'STU002',
+			incident_id: 'INC002',
+		},
+	],
+	disciplinaryActions: [
+		{
+			id: 'DISA001',
+			dis_it: 'Warning',
+			action_taken: 'Verbal warning issued',
+			dis_terms:
+				'No further action if behavior improves',
+		},
+		{
+			id: 'DISA002',
+			dis_it: 'Suspension',
+			action_taken: '3-day suspension',
+			dis_terms: 'Must complete missed work',
+		},
+	],
+	admins: [
+		{
+			id: 'ADM001',
+			admin_name: 'Sarah Johnson',
+			admin_date: '2023-01-01',
+			admin_loc: 'Main Office',
+			admin_sl: 'High',
+		},
+		{
+			id: 'ADM002',
+			admin_name: 'Michael Brown',
+			admin_date: '2023-01-15',
+			admin_loc: 'Discipline Office',
+			admin_sl: 'Medium',
+		},
+	],
+	appeals: [
+		{
+			id: 'APL001',
+			appeal_name: 'Tardiness Appeal',
+			appeal_rsn: 'Bus delay',
+			appeal_se: 'Pending',
+		},
+		{
+			id: 'APL002',
+			appeal_name: 'Cheating Allegation Appeal',
+			appeal_rsn: 'Misunderstanding of rules',
+			appeal_se: 'Under Review',
 		},
 	],
 };
-
-const dummyIncidents = {incidents: [
-	{
-		id: 'INC001',
-		student_id: 'STU001',
-		description: 'Tardiness to morning assembly',
-		date: '2023-05-15',
-		status: 'Pending',
-	},
-	{
-		id: 'INC002',
-		student_id: 'STU001',
-		description:
-			'Unauthorized use of mobile phone during class',
-		date: '2023-05-18',
-		status: 'Under Review',
-	},
-	{
-		id: 'INC003',
-		student_id: 'STU001',
-		description:
-			'Failure to complete assigned homework',
-		date: '2023-05-22',
-		status: 'Resolved',
-	},
-	{
-		id: 'INC004',
-		student_id: 'STU002',
-		description: 'Disruptive behavior in the cafeteria',
-		date: '2023-05-20',
-		status: 'Pending',
-	},
-	{
-		id: 'INC005',
-		student_id: 'STU002',
-		description: 'Violation of dress code policy',
-		date: '2023-05-23',
-		status: 'Under Review',
-	},
-]};
-
-const dummyStaff = [
-	{
-		id: 'STAFF001',
-		name: 'John Smith',
-		department: 'Administration',
-	},
-];
-
-const dummyAppeals = [
-	{
-		id: 'AP001',
-		student_id: 'STU001',
-		incident_id: 'INC001',
-		status: 'Pending',
-	},
-];
-
-const dummyActions = [
-	{
-		id: 'ACT001',
-		incident_id: 'INC001',
-		action_type: 'Warning',
-		description: 'First-time warning',
-	},
-];
 
 app.listen(PORT, () => {
 	console.log(

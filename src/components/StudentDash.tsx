@@ -1,7 +1,9 @@
-// src/components/StudentDash.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { Button } from './ui/button';
 import {
 	Card,
@@ -18,47 +20,48 @@ import {
 	TableRow,
 } from './ui/table';
 import { useToast } from './ui/use-toast';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import axios from 'axios';
 import React from 'react';
 
 const appealSchema = z.object({
-	student_id: z.string().min(1, 'Student ID is required'),
-	incident_id: z
+	appeal_name: z
 		.string()
-		.min(1, 'Incident ID is required'),
-	appeal_text: z
+		.min(1, 'Appeal name is required'),
+	appeal_rsn: z
 		.string()
 		.min(
 			10,
-			'Appeal text must be at least 10 characters',
+			'Appeal reason must be at least 10 characters',
 		),
-	guardian_name: z
+	appeal_se: z
 		.string()
-		.min(2, 'Guardian name is required'),
-	guardian_contact: z
-		.string()
-		.min(10, 'Valid contact information is required'),
+		.min(1, 'Appeal status is required'),
 });
 
-export default function StudentDash() {
+interface Incident {
+	id: string;
+	inc_name: string;
+	inc_date: string;
+	inc_loc: string;
+	inc_sl: string;
+}
+
+export default function StudentDashboard() {
 	const { toast } = useToast();
-	const [incidents, setIncidents] = useState<{ id: string; description: string; date: string; status: string; }[]>([]);
+	const [incidents, setIncidents] = useState<Incident[]>(
+		[],
+	);
 	const [loading, setLoading] = useState(true);
 	const [studentId, setStudentId] = useState('');
 
 	const form = useForm({
 		resolver: zodResolver(appealSchema),
 		defaultValues: {
-			student_id: '',
-			incident_id: '',
-			appeal_text: '',
-			guardian_name: '',
-			guardian_contact: '',
+			appeal_name: '',
+			appeal_rsn: '',
+			appeal_se: 'Pending',
 		},
 	});
 
@@ -69,13 +72,9 @@ export default function StudentDash() {
 					localStorage.getItem('studentId') ||
 					'STU001';
 				setStudentId(storedStudentId);
-				form.setValue(
-					'student_id',
-					storedStudentId,
-				);
 
 				const response = await axios.get(
-					`http://localhost:5000/api/incidents/${storedStudentId}`,
+					`http://localhost:5000/api/incidents`,
 				);
 				setIncidents(response.data);
 			} catch (error) {
@@ -95,12 +94,14 @@ export default function StudentDash() {
 		};
 
 		fetchData();
-	}, [form, toast]);
+	}, [toast]);
 
-	const onSubmit = async (data) => {
+	const onSubmit = async (
+		data: z.infer<typeof appealSchema>,
+	) => {
 		try {
 			await axios.post(
-				'http://localhost:5000/api/appeals',
+				'http://localhost:5000/api/submit-appeal',
 				data,
 			);
 			toast({
@@ -126,7 +127,7 @@ export default function StudentDash() {
 
 	return (
 		<div className="container mx-auto p-6">
-			<h1 className="text-2xl font-bold mb-6">
+			<h1 className="text-3xl font-bold mb-6">
 				Student Dashboard
 			</h1>
 
@@ -143,13 +144,16 @@ export default function StudentDash() {
 										ID
 									</TableHead>
 									<TableHead>
-										Description
+										Name
 									</TableHead>
 									<TableHead>
 										Date
 									</TableHead>
 									<TableHead>
-										Status
+										Location
+									</TableHead>
+									<TableHead>
+										Severity Level
 									</TableHead>
 								</TableRow>
 							</TableHeader>
@@ -168,17 +172,22 @@ export default function StudentDash() {
 											</TableCell>
 											<TableCell>
 												{
-													incident.description
+													incident.inc_name
 												}
 											</TableCell>
 											<TableCell>
 												{
-													incident.date
+													incident.inc_date
 												}
 											</TableCell>
 											<TableCell>
 												{
-													incident.status
+													incident.inc_loc
+												}
+											</TableCell>
+											<TableCell>
+												{
+													incident.inc_sl
 												}
 											</TableCell>
 										</TableRow>
@@ -204,39 +213,25 @@ export default function StudentDash() {
 						className="space-y-4"
 					>
 						<Input
-							{...form.register('student_id')}
-							value={studentId}
-							readOnly
-							className="bg-gray-100"
-						/>
-						<Input
 							{...form.register(
-								'incident_id',
+								'appeal_name',
 							)}
-							placeholder="Incident ID"
+							placeholder="Appeal Name"
 						/>
 						<Textarea
-							{...form.register(
-								'appeal_text',
-							)}
+							{...form.register('appeal_rsn')}
 							placeholder="Please provide details of your appeal..."
 							className="min-h-[100px]"
 						/>
 						<Input
-							{...form.register(
-								'guardian_name',
-							)}
-							placeholder="Guardian Name"
-						/>
-						<Input
-							{...form.register(
-								'guardian_contact',
-							)}
-							placeholder="Guardian Contact (Phone or Email)"
+							{...form.register('appeal_se')}
+							value="Pending"
+							readOnly
+							className="bg-gray-100"
 						/>
 						<Button
 							type="submit"
-							className="w-full bg-customBlue hover:bg-blue-700 text-white"
+							className="w-1/2 bg-customBlue hover:border-customPurple text-white"
 						>
 							Submit Appeal
 						</Button>
