@@ -70,6 +70,51 @@ const disciplinaryActionSchema = z.object({
 		.min(1, 'Terms are required'),
 });
 
+const disciplinaryRecordSchema = z.object({
+	Disciplinary_Record_Description: z
+		.string()
+		.min(1, 'Description is required')
+		.max(
+			255,
+			'Description cannot exceed 255 characters',
+		),
+	Disciplinary_Record_status: z
+		.string()
+		.min(1, 'Status is required')
+		.max(50, 'Status cannot exceed 50 characters'),
+	StudentID: z
+		.number()
+		.int('Student ID must be an integer')
+		.positive('Student ID must be a positive number'),
+	IncidentID: z
+		.number()
+		.int('Incident ID must be an integer')
+		.positive('Incident ID must be a positive number'),
+});
+
+const adminSchema = z.object({
+	admin_name: z.string().min(1, 'Admin name is required'),
+	admin_date: z.date({
+		required_error: 'Date of Registration is required',
+	}),
+	admin_location: z
+		.string()
+		.min(1, 'Location is required'),
+	admin_sl: z
+		.string()
+		.min(1, 'Severity Level is required'),
+});
+
+const appealSchema = z.object({
+	appeal_name: z
+		.string()
+		.min(1, 'Appeal name is required'),
+	appeal_reason: z.string().min(20, 'Reason is required'),
+	appeal_status: z
+		.string()
+		.min(1, 'Appeal Status is required'),
+});
+
 interface Student {
 	StudentID: number;
 	first_name: string;
@@ -77,7 +122,6 @@ interface Student {
 	date_of_birth: Date;
 	email: string;
 	parent_no: string;
-	disciplinary_history: DisciplinaryAction[]; // New field for disciplinary history
 }
 
 interface Incident {
@@ -86,8 +130,6 @@ interface Incident {
 	Incident_date: Date;
 	Incident_location: string;
 	Incident_sl: string;
-	assigned_to: string; // New field for staff assignment
-	status: 'pending' | 'under investigation' | 'resolved'; // New field for status tracking
 }
 
 interface DisciplinaryAction {
@@ -95,12 +137,39 @@ interface DisciplinaryAction {
 	Disciplinary_Incident_Type: string;
 	Disciplinary_action_Taken: string;
 	Disciplinary_Terms: string;
-	effectiveness: 'effective' | 'ineffective'; // New field for tracking effectiveness
+}
+
+interface DisciplinaryRecord {
+	recordID: number;
+	Disciplinary_Record_Description: string;
+	Disciplinary_Record_status: string;
+	StudentID: number;
+	IncidentID: number;
+}
+
+interface Admin {
+	AdminID: number;
+	Admin_name: string;
+	Admin_date: Date;
+	Admin_location: string;
+	Admin_sl: string;
+}
+
+interface Appeal {
+	AppealID: number;
+	Appeal_name: string;
+	Appeal_reason: string;
+	Appeal_Status: string;
 }
 
 export default function StaffDashboard() {
 	const { toast } = useToast();
 	const [students, setStudents] = useState<Student[]>([]);
+	const [admins, setAdmins] = useState<Admin[]>([]);
+	const [appeals, setAppeals] = useState<Appeal[]>([]);
+	const [records, setRecords] = useState<
+		DisciplinaryRecord[]
+	>([]);
 	const [incidents, setIncidents] = useState<Incident[]>(
 		[],
 	);
@@ -139,10 +208,42 @@ export default function StaffDashboard() {
 		},
 	});
 
+	const recordForm = useForm({
+		resolver: zodResolver(disciplinaryRecordSchema),
+		defaultValues: {
+			Disciplinary_Record_Description: '',
+			Disciplinary_Record_status: '',
+			StudentID: 0,
+			IncidentID: 0,
+		},
+	});
+
+	const adminForm = useForm({
+		resolver: zodResolver(adminSchema),
+		defaultValues: {
+			admin_name: '',
+			admin_date: new Date(),
+			admin_location: '',
+			admin_sl: '',
+		},
+	});
+
+	const appealForm = useForm({
+		resolver: zodResolver(appealSchema),
+		defaultValues: {
+			appeal_name: '',
+			appeal_reason: '',
+			appeal_status: '',
+		},
+	});
+
 	useEffect(() => {
 		fetchStudents();
 		fetchIncidents();
 		fetchActions();
+		fetchAdmins();
+		fetchAppeals();
+		fetchRecords();
 	}, []);
 
 	const fetchStudents = async () => {
@@ -166,6 +267,38 @@ export default function StaffDashboard() {
 			toast({
 				title: 'Error',
 				description: 'Failed to fetch students',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const fetchAdmins = async () => {
+		try {
+			const response = await axios.get(
+				'http://localhost:5000/api/admins',
+			);
+			setAdmins(response.data);
+		} catch (error) {
+			console.error('Error fetching admins:', error);
+			toast({
+				title: 'Error',
+				description: 'Failed to fetch admins',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const fetchAppeals = async () => {
+		try {
+			const response = await axios.get(
+				'http://localhost:5000/api/appeals',
+			);
+			setAppeals(response.data);
+		} catch (error) {
+			console.error('Error fetching Appeals:', error);
+			toast({
+				title: 'Error',
+				description: 'Failed to fetch Appeals',
 				variant: 'destructive',
 			});
 		}
@@ -209,6 +342,23 @@ export default function StaffDashboard() {
 				title: 'Error',
 				description:
 					'Failed to fetch disciplinary actions',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const fetchRecords = async () => {
+		try {
+			const response = await axios.get(
+				'http://localhost:5000/api/disciplinary-records',
+			);
+			setRecords(response.data);
+		} catch (error) {
+			console.error('Error fetching records:', error);
+			toast({
+				title: 'Error',
+				description:
+					'Failed to fetch disciplinary records',
 				variant: 'destructive',
 			});
 		}
@@ -301,10 +451,86 @@ export default function StaffDashboard() {
 		}
 	};
 
+	const onSubmitRecord = async (
+		data: z.infer<typeof disciplinaryRecordSchema>,
+	) => {
+		try {
+			await axios.post(
+				'http://localhost:5000/api/disciplinary-records',
+				data,
+			);
+			toast({
+				title: 'Success',
+				description:
+					'Disciplinary Record added successfully',
+			});
+			recordForm.reset();
+			fetchRecords();
+		} catch (error) {
+			console.error('Error adding record:', error);
+			toast({
+				title: 'Error',
+				description:
+					'Failed to add disciplinary record',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const onSubmitAdmin = async (
+		data: z.infer<typeof adminSchema>,
+	) => {
+		try {
+			await axios.post(
+				'http://localhost:5000/api/admins',
+				data,
+			);
+			toast({
+				title: 'Success',
+				description: 'Admin added successfully',
+			});
+			adminForm.reset();
+			fetchAdmins();
+		} catch (error) {
+			console.error('Error adding admin:', error);
+			toast({
+				title: 'Error',
+				description:
+					'Failed to add admin. Please try again.',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const onSubmitAppeal = async (
+		data: z.infer<typeof appealSchema>,
+	) => {
+		try {
+			await axios.post(
+				'http://localhost:5000/api/appeals',
+				data,
+			);
+			toast({
+				title: 'Success',
+				description: 'Appeal added successfully',
+			});
+			appealForm.reset();
+			fetchAppeals();
+		} catch (error) {
+			console.error('Error adding appeal:', error);
+			toast({
+				title: 'Error',
+				description:
+					'Failed to add appeal. Please try again.',
+				variant: 'destructive',
+			});
+		}
+	};
+
 	return (
 		<div className="container mx-auto p-6">
 			<h1 className="text-3xl font-bold mb-6">
-				Staff Dashboard
+				DBA Dashboard
 			</h1>
 			<Tabs
 				value={activeTab}
@@ -319,6 +545,15 @@ export default function StaffDashboard() {
 					</TabsTrigger>
 					<TabsTrigger value="actions">
 						Disciplinary Actions
+					</TabsTrigger>
+					<TabsTrigger value="records">
+						Disciplinary Records
+					</TabsTrigger>
+					<TabsTrigger value="admins">
+						Admins
+					</TabsTrigger>
+					<TabsTrigger value="appeals">
+						Appeals
 					</TabsTrigger>
 				</TabsList>
 
@@ -679,6 +914,356 @@ export default function StaffDashboard() {
 												<TableCell>
 													{
 														action.Disciplinary_Terms
+													}
+												</TableCell>
+											</TableRow>
+										),
+									)}
+								</TableBody>
+							</Table>
+						</CardContent>
+					</Card>
+				</TabsContent>
+
+				<TabsContent value="records">
+					<Card>
+						<CardHeader>
+							<CardTitle>
+								Add Disciplinary Records
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<form
+								onSubmit={recordForm.handleSubmit(
+									onSubmitRecord,
+								)}
+								className="space-y-4"
+							>
+								<Input
+									{...recordForm.register(
+										'Disciplinary_Record_Description',
+									)}
+									placeholder="Record Description"
+								/>
+								<Textarea
+									{...recordForm.register(
+										'Disciplinary_Record_status',
+									)}
+									placeholder="Status"
+								/>
+								<Input
+									{...recordForm.register(
+										'StudentID',
+									)}
+									placeholder="Student ID"
+								/>
+								<Input
+									{...recordForm.register(
+										'IncidentID',
+									)}
+									placeholder="Incident ID"
+								/>
+								<Button
+									type="submit"
+									className="w-full"
+								>
+									Add Record
+								</Button>
+							</form>
+						</CardContent>
+					</Card>
+
+					<Card className="mt-6">
+						<CardHeader>
+							<CardTitle>
+								Disciplinary Records List
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead>
+											ID
+										</TableHead>
+										<TableHead>
+											Description
+										</TableHead>
+										<TableHead>
+											Status
+										</TableHead>
+										<TableHead>
+											Student ID
+										</TableHead>
+										<TableHead>
+											Incident ID
+										</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{records.map(
+										(record) => (
+											<TableRow
+												key={
+													record.recordID
+												}
+											>
+												<TableCell>
+													{
+														record.recordID
+													}
+												</TableCell>
+												<TableCell>
+													{
+														record.Disciplinary_Record_Description
+													}
+												</TableCell>
+												<TableCell>
+													{
+														record.Disciplinary_Record_status
+													}
+												</TableCell>
+												<TableCell>
+													{
+														record.StudentID
+													}
+												</TableCell>
+												<TableCell>
+													{
+														record.IncidentID
+													}
+												</TableCell>
+											</TableRow>
+										),
+									)}
+								</TableBody>
+							</Table>
+						</CardContent>
+					</Card>
+				</TabsContent>
+
+				<TabsContent value="admins">
+					<Card>
+						<CardHeader>
+							<CardTitle>Add Admin</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<form
+								onSubmit={adminForm.handleSubmit(
+									onSubmitAdmin,
+								)}
+								className="space-y-4"
+							>
+								<Input
+									{...adminForm.register(
+										'admin_name',
+									)}
+									placeholder="Name of Admin"
+								/>
+								<Input
+									{...adminForm.register(
+										'admin_date',
+										{
+											valueAsDate:
+												true,
+										},
+									)}
+									type="date"
+									placeholder="Admin's Register Date"
+								/>
+								<Input
+									{...adminForm.register(
+										'admin_location',
+									)}
+									placeholder="Admin's Location"
+								/>
+								<Input
+									{...adminForm.register(
+										'admin_sl',
+									)}
+									placeholder="Admin's Severity Level"
+								/>
+								<Button
+									type="submit"
+									className="w-full"
+								>
+									Add Admin
+								</Button>
+							</form>
+						</CardContent>
+					</Card>
+
+					<Card className="mt-6">
+						<CardHeader>
+							<CardTitle>
+								Admins List
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead>
+											ID
+										</TableHead>
+										<TableHead>
+											Name
+										</TableHead>
+										<TableHead>
+											Register Date
+										</TableHead>
+										<TableHead>
+											Location
+										</TableHead>
+										<TableHead>
+											Severity Level
+										</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{admins.map((admin) => (
+										<TableRow
+											key={
+												admin.AdminID
+											}
+										>
+											<TableCell>
+												{
+													admin.AdminID
+												}
+											</TableCell>
+											<TableCell>
+												{
+													admin.Admin_name
+												}
+											</TableCell>
+											<TableCell>
+												{new Date(
+													admin.Admin_date,
+												)
+													.toLocaleDateString(
+														'en-GB',
+														{
+															day: '2-digit',
+															month: 'short',
+															year: 'numeric',
+														},
+													)
+													.replace(
+														/ /g,
+														'-',
+													)}
+											</TableCell>
+											<TableCell>
+												{
+													admin.Admin_location
+												}
+											</TableCell>
+											<TableCell>
+												{
+													admin.Admin_sl
+												}
+											</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
+						</CardContent>
+					</Card>
+				</TabsContent>
+
+				<TabsContent value="appeals">
+					<Card>
+						<CardHeader>
+							<CardTitle>
+								Add Appeal
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<form
+								onSubmit={appealForm.handleSubmit(
+									onSubmitAppeal,
+								)}
+								className="space-y-4"
+							>
+								<Input
+									{...appealForm.register(
+										'appeal_name',
+									)}
+									placeholder="Name of Appeal"
+								/>
+								<Input
+									{...appealForm.register(
+										'appeal_reason',
+									)}
+									placeholder="Reason of Appeal"
+								/>
+								<Input
+									{...appealForm.register(
+										'appeal_status',
+									)}
+									placeholder="Appeal's Status"
+								/>
+								<Button
+									type="submit"
+									className="w-full"
+								>
+									Add Appeal
+								</Button>
+							</form>
+						</CardContent>
+					</Card>
+
+					<Card className="mt-6">
+						<CardHeader>
+							<CardTitle>
+								Appeals List
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead>
+											ID
+										</TableHead>
+										<TableHead>
+											Name
+										</TableHead>
+										<TableHead>
+											Reason
+										</TableHead>
+										<TableHead>
+											Status
+										</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{appeals.map(
+										(appeal) => (
+											<TableRow
+												key={
+													appeal.AppealID
+												}
+											>
+												<TableCell>
+													{
+														appeal.AppealID
+													}
+												</TableCell>
+												<TableCell>
+													{
+														appeal.Appeal_name
+													}
+												</TableCell>
+												<TableCell>
+													{
+														appeal.Appeal_reason
+													}
+												</TableCell>
+												<TableCell>
+													{
+														appeal.Appeal_Status
 													}
 												</TableCell>
 											</TableRow>
