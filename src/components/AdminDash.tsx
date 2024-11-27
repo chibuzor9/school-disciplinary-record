@@ -1,4 +1,3 @@
-import React from 'react';
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -29,23 +28,15 @@ import {
 } from './ui/tabs';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from './ui/dialog';
 import axios from 'axios';
+import React from 'react';
 
-// Schema definitions
 const studentSchema = z.object({
-	id: z.string().optional(),
 	first_name: z.string().min(1, 'First name is required'),
 	last_name: z.string().min(1, 'Last name is required'),
-	date_of_birth: z
-		.string()
-		.min(1, 'Date of birth is required'),
+	date_of_birth: z.date({
+		required_error: 'Date of birth is required',
+	}),
 	email: z.string().email('Invalid email'),
 	parent_no: z
 		.string()
@@ -53,74 +44,61 @@ const studentSchema = z.object({
 });
 
 const incidentSchema = z.object({
-	id: z.string().optional(),
-	inc_name: z
+	Incident_name: z
 		.string()
 		.min(1, 'Incident name is required'),
-	inc_date: z
-		.string()
-		.min(1, 'Incident date is required'),
-	inc_loc: z
+	Incident_date: z.date({
+		required_error: 'Incident date is required',
+	}),
+	Incident_location: z
 		.string()
 		.min(1, 'Incident location is required'),
-	inc_sl: z.string().min(1, 'Severity level is required'),
+	Incident_sl: z
+		.string()
+		.min(1, 'Severity level is required'),
 });
 
-const actionSchema = z.object({
-	id: z.string().optional(),
-	incident_id: z
+const disciplinaryActionSchema = z.object({
+	Disciplinary_Incident_Type: z
 		.string()
-		.min(1, 'Incident ID is required'),
-	dis_it: z.string().min(1, 'Action Type is required'),
-	action_taken: z
+		.min(1, 'Incident type is required'),
+	Disciplinary_action_Taken: z
 		.string()
 		.min(1, 'Action taken is required'),
-	dis_terms: z.string().min(1, 'Terms are required'),
+	Disciplinary_Terms: z
+		.string()
+		.min(1, 'Terms are required'),
 });
 
-const staffSchema = z.object({
-	id: z.string().optional(),
-	first_name: z.string().min(1, 'First name is required'),
-	last_name: z.string().min(1, 'Last name is required'),
-	email: z.string().email('Invalid email'),
-	position: z.string().min(1, 'Position is required'),
-});
-
-// Interface definitions
 interface Student {
-	id: string;
+	StudentID: number;
 	first_name: string;
 	last_name: string;
-	date_of_birth: string;
+	date_of_birth: Date;
 	email: string;
 	parent_no: string;
+	disciplinary_history: DisciplinaryAction[]; // New field for disciplinary history
 }
 
 interface Incident {
-	id: string;
-	inc_name: string;
-	inc_date: string;
-	inc_loc: string;
-	inc_sl: string;
+	IncidentID: number;
+	Incident_name: string;
+	Incident_date: Date;
+	Incident_location: string;
+	Incident_sl: string;
+	assigned_to: string; // New field for staff assignment
+	status: 'pending' | 'under investigation' | 'resolved'; // New field for status tracking
 }
 
 interface DisciplinaryAction {
-	id: string;
-	incident_id: string;
-	dis_it: string;
-	action_taken: string;
-	dis_terms: string;
+	DisrActionID: number;
+	Disciplinary_Incident_Type: string;
+	Disciplinary_action_Taken: string;
+	Disciplinary_Terms: string;
+	effectiveness: 'effective' | 'ineffective'; // New field for tracking effectiveness
 }
 
-interface Staff {
-	id: string;
-	first_name: string;
-	last_name: string;
-	email: string;
-	position: string;
-}
-
-export default function AdminDashboard() {
+export default function StaffDashboard() {
 	const { toast } = useToast();
 	const [students, setStudents] = useState<Student[]>([]);
 	const [incidents, setIncidents] = useState<Incident[]>(
@@ -129,171 +107,195 @@ export default function AdminDashboard() {
 	const [actions, setActions] = useState<
 		DisciplinaryAction[]
 	>([]);
-	const [staff, setStaff] = useState<Staff[]>([]);
 	const [activeTab, setActiveTab] = useState('students');
-	const [editingItem, setEditingItem] = useState<
-		| Student
-		| Incident
-		| DisciplinaryAction
-		| Staff
-		| null
-	>(null);
-	const [isAddDialogOpen, setIsAddDialogOpen] =
-		useState(false);
 
-	const studentForm = useForm<
-		z.infer<typeof studentSchema>
-	>({
+	const studentForm = useForm({
 		resolver: zodResolver(studentSchema),
+		defaultValues: {
+			first_name: '',
+			last_name: '',
+			date_of_birth: new Date(),
+			email: '',
+			parent_no: '',
+		},
 	});
 
-	const incidentForm = useForm<
-		z.infer<typeof incidentSchema>
-	>({
+	const incidentForm = useForm({
 		resolver: zodResolver(incidentSchema),
+		defaultValues: {
+			Incident_name: '',
+			Incident_date: new Date(),
+			Incident_location: '',
+			Incident_sl: '',
+		},
 	});
 
-	const actionForm = useForm<
-		z.infer<typeof actionSchema>
-	>({
-		resolver: zodResolver(actionSchema),
-	});
-
-	const staffForm = useForm<z.infer<typeof staffSchema>>({
-		resolver: zodResolver(staffSchema),
+	const actionForm = useForm({
+		resolver: zodResolver(disciplinaryActionSchema),
+		defaultValues: {
+			Disciplinary_Incident_Type: '',
+			Disciplinary_action_Taken: '',
+			Disciplinary_Terms: '',
+		},
 	});
 
 	useEffect(() => {
-		fetchData();
+		fetchStudents();
+		fetchIncidents();
+		fetchActions();
 	}, []);
 
-	const fetchData = async () => {
+	const fetchStudents = async () => {
 		try {
-			const [
-				studentsRes,
-				incidentsRes,
-				actionsRes,
-				staffRes,
-			] = await Promise.all([
-				axios.get(
-					'http://localhost:5000/api/students',
-				),
-				axios.get(
-					'http://localhost:5000/api/incidents',
-				),
-				axios.get(
-					'http://localhost:5000/api/disciplinary-actions',
-				),
-				axios.get(
-					'http://localhost:5000/api/staff',
-				),
-			]);
-
-			setStudents(studentsRes.data);
-			setIncidents(incidentsRes.data);
-			setActions(actionsRes.data);
-			setStaff(staffRes.data);
+			const response = await axios.get(
+				'http://localhost:5000/api/students',
+			);
+			setStudents(
+				response.data.map((student: any) => ({
+					...student,
+					date_of_birth: new Date(
+						student.date_of_birth,
+					),
+				})),
+			);
 		} catch (error) {
-			console.error('Error fetching data:', error);
+			console.error(
+				'Error fetching students:',
+				error,
+			);
 			toast({
 				title: 'Error',
-				description: 'Failed to fetch data',
+				description: 'Failed to fetch students',
 				variant: 'destructive',
 			});
 		}
 	};
 
-	const handleDelete = async (
-		id: string,
-		type: 'student' | 'incident' | 'action' | 'staff',
+	const fetchIncidents = async () => {
+		try {
+			const response = await axios.get(
+				'http://localhost:5000/api/incidents',
+			);
+			setIncidents(
+				response.data.map((incident: any) => ({
+					...incident,
+					Incident_date: new Date(
+						incident.Incident_date,
+					),
+				})),
+			);
+		} catch (error) {
+			console.error(
+				'Error fetching incidents:',
+				error,
+			);
+			toast({
+				title: 'Error',
+				description: 'Failed to fetch incidents',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const fetchActions = async () => {
+		try {
+			const response = await axios.get(
+				'http://localhost:5000/api/disciplinary-actions',
+			);
+			setActions(response.data);
+		} catch (error) {
+			console.error('Error fetching actions:', error);
+			toast({
+				title: 'Error',
+				description:
+					'Failed to fetch disciplinary actions',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const onSubmitStudent = async (
+		data: z.infer<typeof studentSchema>,
 	) => {
 		try {
-			await axios.delete(
-				`http://localhost:5000/api/${type}s/${id}`,
+			const formattedData = {
+				...data,
+				date_of_birth: data.date_of_birth
+					.toISOString()
+					.split('T')[0],
+			};
+			await axios.post(
+				'http://localhost:5000/api/students',
+				formattedData,
 			);
 			toast({
 				title: 'Success',
-				description: `${type.charAt(0).toUpperCase() + type.slice(1)} deleted successfully`,
+				description: 'Student added successfully',
 			});
-			fetchData();
+			studentForm.reset();
+			fetchStudents();
 		} catch (error) {
-			console.error(`Error deleting ${type}:`, error);
+			console.error('Error adding student:', error);
 			toast({
 				title: 'Error',
-				description: `Failed to delete ${type}`,
+				description: 'Failed to add student',
 				variant: 'destructive',
 			});
 		}
 	};
 
-	const handleEdit = (
-		item:
-			| Student
-			| Incident
-			| DisciplinaryAction
-			| Staff,
-		type: 'student' | 'incident' | 'action' | 'staff',
-	) => {
-		setEditingItem(item);
-		if (type === 'student') studentForm.reset(item);
-		if (type === 'incident') incidentForm.reset(item);
-		if (type === 'action') actionForm.reset(item);
-		if (type === 'staff') staffForm.reset(item);
-	};
-
-	const handleUpdate = async (
-		data:
-			| z.infer<typeof studentSchema>
-			| z.infer<typeof incidentSchema>
-			| z.infer<typeof actionSchema>
-			| z.infer<typeof staffSchema>,
-		type: 'student' | 'incident' | 'action' | 'staff',
+	const onSubmitIncident = async (
+		data: z.infer<typeof incidentSchema>,
 	) => {
 		try {
-			await axios.put(
-				`http://localhost:5000/api/${type}s/${data.id}`,
-				data,
+			const formattedData = {
+				...data,
+				Incident_date:
+					data.Incident_date.toISOString().split(
+						'T',
+					)[0],
+			};
+			await axios.post(
+				'http://localhost:5000/api/incidents',
+				formattedData,
 			);
 			toast({
 				title: 'Success',
-				description: `${type.charAt(0).toUpperCase() + type.slice(1)} updated successfully`,
+				description: 'Incident added successfully',
 			});
-			setEditingItem(null);
-			fetchData();
+			incidentForm.reset();
+			fetchIncidents();
 		} catch (error) {
-			console.error(`Error updating ${type}:`, error);
+			console.error('Error adding incident:', error);
 			toast({
 				title: 'Error',
-				description: `Failed to update ${type}`,
+				description: 'Failed to add incident',
 				variant: 'destructive',
 			});
 		}
 	};
 
-	const handleAdd = async (
-		data:
-			| z.infer<typeof studentSchema>
-			| z.infer<typeof incidentSchema>
-			| z.infer<typeof actionSchema>
-			| z.infer<typeof staffSchema>,
-		type: 'student' | 'incident' | 'action' | 'staff',
+	const onSubmitAction = async (
+		data: z.infer<typeof disciplinaryActionSchema>,
 	) => {
 		try {
 			await axios.post(
-				`http://localhost:5000/api/${type}s`,
+				'http://localhost:5000/api/disciplinary-actions',
 				data,
 			);
 			toast({
 				title: 'Success',
-				description: `${type.charAt(0).toUpperCase() + type.slice(1)} added successfully`,
+				description:
+					'Disciplinary action added successfully',
 			});
-			setIsAddDialogOpen(false);
-			fetchData();
+			actionForm.reset();
+			fetchActions();
 		} catch (error) {
-			console.error(`Error adding ${type}:`, error);
+			console.error('Error adding action:', error);
 			toast({
 				title: 'Error',
-				description: `Failed to add ${type}`,
+				description:
+					'Failed to add disciplinary action',
 				variant: 'destructive',
 			});
 		}
@@ -302,7 +304,7 @@ export default function AdminDashboard() {
 	return (
 		<div className="container mx-auto p-6">
 			<h1 className="text-3xl font-bold mb-6">
-				Admin Dashboard
+				Staff Dashboard
 			</h1>
 			<Tabs
 				value={activeTab}
@@ -318,749 +320,376 @@ export default function AdminDashboard() {
 					<TabsTrigger value="actions">
 						Disciplinary Actions
 					</TabsTrigger>
-					<TabsTrigger value="staff">
-						Staff
-					</TabsTrigger>
 				</TabsList>
 
-				{[
-					'students',
-					'incidents',
-					'actions',
-					'staff',
-				].map((tab) => (
-					<TabsContent key={tab} value={tab}>
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex justify-between items-center">
-									<span>
-										{tab
-											.charAt(0)
-											.toUpperCase() +
-											tab.slice(
-												1,
-											)}{' '}
-										List
-									</span>
-									<Button
-										onClick={() =>
-											setIsAddDialogOpen(
-												true,
-											)
-										}
-									>
-										Add{' '}
-										{tab.slice(0, -1)}
-									</Button>
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<Table>
-									<TableHeader>
-										<TableRow>
-											{tab ===
-												'students' && (
-												<>
-													<TableHead>
-														ID
-													</TableHead>
-													<TableHead>
-														Name
-													</TableHead>
-													<TableHead>
-														Date
-														of
-														Birth
-													</TableHead>
-													<TableHead>
-														Email
-													</TableHead>
-													<TableHead>
-														Parent
-														Number
-													</TableHead>
-												</>
-											)}
-											{tab ===
-												'incidents' && (
-												<>
-													<TableHead>
-														ID
-													</TableHead>
-													<TableHead>
-														Name
-													</TableHead>
-													<TableHead>
-														Date
-													</TableHead>
-													<TableHead>
-														Location
-													</TableHead>
-													<TableHead>
-														Severity
-														Level
-													</TableHead>
-												</>
-											)}
-											{tab ===
-												'actions' && (
-												<>
-													<TableHead>
-														ID
-													</TableHead>
-													<TableHead>
-														Incident
-														ID
-													</TableHead>
-													<TableHead>
-														Action
-														Type
-													</TableHead>
-													<TableHead>
-														Action
-														Taken
-													</TableHead>
-													<TableHead>
-														Terms
-													</TableHead>
-												</>
-											)}
-											{tab ===
-												'staff' && (
-												<>
-													<TableHead>
-														ID
-													</TableHead>
-													<TableHead>
-														Name
-													</TableHead>
-													<TableHead>
-														Email
-													</TableHead>
-													<TableHead>
-														Position
-													</TableHead>
-												</>
-											)}
-											<TableHead>
-												Actions
-											</TableHead>
-										</TableRow>
-									</TableHeader>
-									<TableBody>
-										{tab ===
-											'students' &&
-											students.map(
-												(
-													student,
-												) => (
-													<TableRow
-														key={
-															student.id
-														}
-													>
-														<TableCell>
-															{
-																student.id
-															}
-														</TableCell>
-														<TableCell>{`${student.first_name} ${student.last_name}`}</TableCell>
-														<TableCell>
-															{
-																student.date_of_birth
-															}
-														</TableCell>
-														<TableCell>
-															{
-																student.email
-															}
-														</TableCell>
-														<TableCell>
-															{
-																student.parent_no
-															}
-														</TableCell>
-														<TableCell>
-															<Button
-																onClick={() =>
-																	handleEdit(
-																		student,
-																		'student',
-																	)
-																}
-																className="mr-2"
-															>
-																Edit
-															</Button>
-															<Button
-																onClick={() =>
-																	handleDelete(
-																		student.id,
-																		'student',
-																	)
-																}
-																variant="destructive"
-															>
-																Delete
-															</Button>
-														</TableCell>
-													</TableRow>
-												),
-											)}
-										{tab ===
-											'incidents' &&
-											incidents.map(
-												(
-													incident,
-												) => (
-													<TableRow
-														key={
-															incident.id
-														}
-													>
-														<TableCell>
-															{
-																incident.id
-															}
-														</TableCell>
-														<TableCell>
-															{
-																incident.inc_name
-															}
-														</TableCell>
-														<TableCell>
-															{
-																incident.inc_date
-															}
-														</TableCell>
-														<TableCell>
-															{
-																incident.inc_loc
-															}
-														</TableCell>
-														<TableCell>
-															{
-																incident.inc_sl
-															}
-														</TableCell>
-														<TableCell>
-															<Button
-																onClick={() =>
-																	handleEdit(
-																		incident,
-																		'incident',
-																	)
-																}
-																className="mr-2"
-															>
-																Edit
-															</Button>
-															<Button
-																onClick={() =>
-																	handleDelete(
-																		incident.id,
-																		'incident',
-																	)
-																}
-																variant="destructive"
-															>
-																Delete
-															</Button>
-														</TableCell>
-													</TableRow>
-												),
-											)}
-										{tab ===
-											'actions' &&
-											actions.map(
-												(
-													action,
-												) => (
-													<TableRow
-														key={
-															action.id
-														}
-													>
-														<TableCell>
-															{
-																action.id
-															}
-														</TableCell>
-														<TableCell>
-															{
-																action.incident_id
-															}
-														</TableCell>
-														<TableCell>
-															{
-																action.dis_it
-															}
-														</TableCell>
-														<TableCell>
-															{
-																action.action_taken
-															}
-														</TableCell>
-														<TableCell>
-															{
-																action.dis_terms
-															}
-														</TableCell>
-														<TableCell>
-															<Button
-																onClick={() =>
-																	handleEdit(
-																		action,
-																		'action',
-																	)
-																}
-																className="mr-2"
-															>
-																Edit
-															</Button>
-															<Button
-																onClick={() =>
-																	handleDelete(
-																		action.id,
-																		'action',
-																	)
-																}
-																variant="destructive"
-															>
-																Delete
-															</Button>
-														</TableCell>
-													</TableRow>
-												),
-											)}
-										{tab === 'staff' &&
-											staff.map(
-												(
-													staffMember,
-												) => (
-													<TableRow
-														key={
-															staffMember.id
-														}
-													>
-														<TableCell>
-															{
-																staffMember.id
-															}
-														</TableCell>
-														<TableCell>{`${staffMember.first_name} ${staffMember.last_name}`}</TableCell>
-														<TableCell>
-															{
-																staffMember.email
-															}
-														</TableCell>
-														<TableCell>
-															{
-																staffMember.position
-															}
-														</TableCell>
-														<TableCell>
-															<Button
-																onClick={() =>
-																	handleEdit(
-																		staffMember,
-																		'staff',
-																	)
-																}
-																className="mr-2"
-															>
-																Edit
-															</Button>
-															<Button
-																onClick={() =>
-																	handleDelete(
-																		staffMember.id,
-																		'staff',
-																	)
-																}
-																variant="destructive"
-															>
-																Delete
-															</Button>
-														</TableCell>
-													</TableRow>
-												),
-											)}
-									</TableBody>
-								</Table>
-							</CardContent>
-						</Card>
-					</TabsContent>
-				))}
-			</Tabs>
-
-			{/* Edit Dialog */}
-			<Dialog
-				open={!!editingItem}
-				onOpenChange={() => setEditingItem(null)}
-			>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>
-							Edit {activeTab.slice(0, -1)}
-						</DialogTitle>
-					</DialogHeader>
-					{activeTab === 'students' && (
-						<form
-							onSubmit={studentForm.handleSubmit(
-								(data) =>
-									handleUpdate(
-										data,
-										'student',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Input
-								{...studentForm.register(
-									'first_name',
-								)}
-								placeholder="First Name"
-							/>
-							<Input
-								{...studentForm.register(
-									'last_name',
-								)}
-								placeholder="Last Name"
-							/>
-							<Input
-								{...studentForm.register(
-									'date_of_birth',
-								)}
-								type="date"
-								placeholder="Date of Birth"
-							/>
-							<Input
-								{...studentForm.register(
-									'email',
-								)}
-								type="email"
-								placeholder="Email"
-							/>
-							<Input
-								{...studentForm.register(
-									'parent_no',
-								)}
-								placeholder="Parent Number"
-							/>
-							<Button type="submit">
-								Update Student
-							</Button>
-						</form>
-					)}
-					{activeTab === 'incidents' && (
-						<form
-							onSubmit={incidentForm.handleSubmit(
-								(data) =>
-									handleUpdate(
-										data,
-										'incident',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Input
-								{...incidentForm.register(
-									'inc_name',
-								)}
-								placeholder="Incident Name"
-							/>
-							<Input
-								{...incidentForm.register(
-									'inc_date',
-								)}
-								type="date"
-								placeholder="Incident Date"
-							/>
-							<Input
-								{...incidentForm.register(
-									'inc_loc',
-								)}
-								placeholder="Incident Location"
-							/>
-							<Input
-								{...incidentForm.register(
-									'inc_sl',
-								)}
-								placeholder="Severity Level"
-							/>
-							<Button type="submit">
-								Update Incident
-							</Button>
-						</form>
-					)}
-					{activeTab === 'actions' && (
-						<form
-							onSubmit={actionForm.handleSubmit(
-								(data) =>
-									handleUpdate(
-										data,
-										'action',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Input
-								{...actionForm.register(
-									'incident_id',
-								)}
-								placeholder="Incident ID"
-							/>
-							<Input
-								{...actionForm.register(
-									'dis_it',
-								)}
-								placeholder="Action Type"
-							/>
-							<Input
-								{...actionForm.register(
-									'action_taken',
-								)}
-								placeholder="Action Taken"
-							/>
-							<Textarea
-								{...actionForm.register(
-									'dis_terms',
-								)}
-								placeholder="Terms"
-							/>
-							<Button type="submit">
-								Update Action
-							</Button>
-						</form>
-					)}
-					{activeTab === 'staff' && (
-						<form
-							onSubmit={staffForm.handleSubmit(
-								(data) =>
-									handleUpdate(
-										data,
-										'staff',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Input
-								{...staffForm.register(
-									'first_name',
-								)}
-								placeholder="First Name"
-							/>
-							<Input
-								{...staffForm.register(
-									'last_name',
-								)}
-								placeholder="Last Name"
-							/>
-							<Input
-								{...staffForm.register(
-									'email',
-								)}
-								type="email"
-								placeholder="Email"
-							/>
-							<Input
-								{...staffForm.register(
-									'position',
-								)}
-								placeholder="Position"
-							/>
-							<Button type="submit">
-								Update Staff
-							</Button>
-						</form>
-					)}
-				</DialogContent>
-			</Dialog>
-
-			{/* Add Dialog */}
-			<Dialog
-				open={isAddDialogOpen}
-				onOpenChange={setIsAddDialogOpen}
-			>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>
-							Add {activeTab.slice(0, -1)}
-						</DialogTitle>
-					</DialogHeader>
-					{activeTab === 'students' && (
-						<form
-							onSubmit={studentForm.handleSubmit(
-								(data) =>
-									handleAdd(
-										data,
-										'student',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Input
-								{...studentForm.register(
-									'first_name',
-								)}
-								placeholder="First Name"
-							/>
-							<Input
-								{...studentForm.register(
-									'last_name',
-								)}
-								placeholder="Last Name"
-							/>
-							<Input
-								{...studentForm.register(
-									'date_of_birth',
-								)}
-								type="date"
-								placeholder="Date of Birth"
-							/>
-							<Input
-								{...studentForm.register(
-									'email',
-								)}
-								type="email"
-								placeholder="Email"
-							/>
-							<Input
-								{...studentForm.register(
-									'parent_no',
-								)}
-								placeholder="Parent Number"
-							/>
-							<Button type="submit">
+				<TabsContent value="students">
+					<Card>
+						<CardHeader>
+							<CardTitle>
 								Add Student
-							</Button>
-						</form>
-					)}
-					{activeTab === 'incidents' && (
-						<form
-							onSubmit={incidentForm.handleSubmit(
-								(data) =>
-									handleAdd(
-										data,
-										'incident',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Input
-								{...incidentForm.register(
-									'inc_name',
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<form
+								onSubmit={studentForm.handleSubmit(
+									onSubmitStudent,
 								)}
-								placeholder="Incident Name"
-							/>
-							<Input
-								{...incidentForm.register(
-									'inc_date',
-								)}
-								type="date"
-								placeholder="Incident Date"
-							/>
-							<Input
-								{...incidentForm.register(
-									'inc_loc',
-								)}
-								placeholder="Incident Location"
-							/>
-							<Input
-								{...incidentForm.register(
-									'inc_sl',
-								)}
-								placeholder="Severity Level"
-							/>
-							<Button type="submit">
+								className="space-y-4"
+							>
+								<Input
+									{...studentForm.register(
+										'first_name',
+									)}
+									placeholder="First Name"
+								/>
+								<Input
+									{...studentForm.register(
+										'last_name',
+									)}
+									placeholder="Last Name"
+								/>
+								<Input
+									{...studentForm.register(
+										'date_of_birth',
+										{
+											valueAsDate:
+												true,
+										},
+									)}
+									type="date"
+									placeholder="Date of Birth"
+								/>
+								<Input
+									{...studentForm.register(
+										'email',
+									)}
+									type="email"
+									placeholder="Email"
+								/>
+								<Input
+									{...studentForm.register(
+										'parent_no',
+									)}
+									placeholder="Parent Number"
+								/>
+								<Button
+									type="submit"
+									className="w-full"
+								>
+									Add Student
+								</Button>
+							</form>
+						</CardContent>
+					</Card>
+
+					<Card className="mt-6">
+						<CardHeader>
+							<CardTitle>
+								Students List
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead>
+											ID
+										</TableHead>
+										<TableHead>
+											Name
+										</TableHead>
+										<TableHead>
+											Date of Birth
+										</TableHead>
+										<TableHead>
+											Email
+										</TableHead>
+										<TableHead>
+											Parent Number
+										</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{students.map(
+										(student) => (
+											<TableRow
+												key={
+													student.StudentID
+												}
+											>
+												<TableCell>
+													{
+														student.StudentID
+													}
+												</TableCell>
+												<TableCell>{`${student.first_name} ${student.last_name}`}</TableCell>
+												<TableCell>
+													{student.date_of_birth
+														.toLocaleDateString(
+															'en-GB',
+															{
+																day: '2-digit',
+																month: 'short',
+																year: 'numeric',
+															},
+														)
+														.replace(
+															/ /g,
+															'-',
+														)}
+												</TableCell>
+												<TableCell>
+													{
+														student.email
+													}
+												</TableCell>
+												<TableCell>
+													{
+														student.parent_no
+													}
+												</TableCell>
+											</TableRow>
+										),
+									)}
+								</TableBody>
+							</Table>
+						</CardContent>
+					</Card>
+				</TabsContent>
+
+				<TabsContent value="incidents">
+					<Card>
+						<CardHeader>
+							<CardTitle>
 								Add Incident
-							</Button>
-						</form>
-					)}
-					{activeTab === 'actions' && (
-						<form
-							onSubmit={actionForm.handleSubmit(
-								(data) =>
-									handleAdd(
-										data,
-										'action',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Input
-								{...actionForm.register(
-									'incident_id',
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<form
+								onSubmit={incidentForm.handleSubmit(
+									onSubmitIncident,
 								)}
-								placeholder="Incident ID"
-							/>
-							<Input
-								{...actionForm.register(
-									'dis_it',
+								className="space-y-4"
+							>
+								<Input
+									{...incidentForm.register(
+										'Incident_name',
+									)}
+									placeholder="Incident Name"
+								/>
+								<Input
+									{...incidentForm.register(
+										'Incident_date',
+										{
+											valueAsDate:
+												true,
+										},
+									)}
+									type="date"
+									placeholder="Incident Date"
+								/>
+								<Input
+									{...incidentForm.register(
+										'Incident_location',
+									)}
+									placeholder="Incident Location"
+								/>
+								<Input
+									{...incidentForm.register(
+										'Incident_sl',
+									)}
+									placeholder="Severity Level"
+								/>
+								<Button
+									type="submit"
+									className="w-full"
+								>
+									Add Incident
+								</Button>
+							</form>
+						</CardContent>
+					</Card>
+
+					<Card className="mt-6">
+						<CardHeader>
+							<CardTitle>
+								Incidents List
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead>
+											ID
+										</TableHead>
+										<TableHead>
+											Name
+										</TableHead>
+										<TableHead>
+											Date
+										</TableHead>
+										<TableHead>
+											Location
+										</TableHead>
+										<TableHead>
+											Severity Level
+										</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{incidents.map(
+										(incident) => (
+											<TableRow
+												key={
+													incident.IncidentID
+												}
+											>
+												<TableCell>
+													{
+														incident.IncidentID
+													}
+												</TableCell>
+												<TableCell>
+													{
+														incident.Incident_name
+													}
+												</TableCell>
+												<TableCell>
+													{incident.Incident_date.toLocaleDateString(
+														'en-GB',
+														{
+															day: '2-digit',
+															month: 'short',
+															year: 'numeric',
+														},
+													).replace(
+														/ /g,
+														'-',
+													)}
+												</TableCell>
+												<TableCell>
+													{
+														incident.Incident_location
+													}
+												</TableCell>
+												<TableCell>
+													{
+														incident.Incident_sl
+													}
+												</TableCell>
+											</TableRow>
+										),
+									)}
+								</TableBody>
+							</Table>
+						</CardContent>
+					</Card>
+				</TabsContent>
+
+				<TabsContent value="actions">
+					<Card>
+						<CardHeader>
+							<CardTitle>
+								Add Disciplinary Action
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<form
+								onSubmit={actionForm.handleSubmit(
+									onSubmitAction,
 								)}
-								placeholder="Action Type"
-							/>
-							<Input
-								{...actionForm.register(
-									'action_taken',
-								)}
-								placeholder="Action Taken"
-							/>
-							<Textarea
-								{...actionForm.register(
-									'dis_terms',
-								)}
-								placeholder="Terms"
-							/>
-							<Button type="submit">
-								Add Action
-							</Button>
-						</form>
-					)}
-					{activeTab === 'staff' && (
-						<form
-							onSubmit={staffForm.handleSubmit(
-								(data) =>
-									handleAdd(
-										data,
-										'staff',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Input
-								{...staffForm.register(
-									'first_name',
-								)}
-								placeholder="First Name"
-							/>
-							<Input
-								{...staffForm.register(
-									'last_name',
-								)}
-								placeholder="Last Name"
-							/>
-							<Input
-								{...staffForm.register(
-									'email',
-								)}
-								type="email"
-								placeholder="Email"
-							/>
-							<Input
-								{...staffForm.register(
-									'position',
-								)}
-								placeholder="Position"
-							/>
-							<Button type="submit">
-								Add Staff
-							</Button>
-						</form>
-					)}
-				</DialogContent>
-			</Dialog>
+								className="space-y-4"
+							>
+								<Input
+									{...actionForm.register(
+										'Disciplinary_Incident_Type',
+									)}
+									placeholder="Incident Type"
+								/>
+								<Textarea
+									{...actionForm.register(
+										'Disciplinary_action_Taken',
+									)}
+									placeholder="Action Taken"
+								/>
+								<Input
+									{...actionForm.register(
+										'Disciplinary_Terms',
+									)}
+									placeholder="Terms"
+								/>
+								<Button
+									type="submit"
+									className="w-full"
+								>
+									Add Action
+								</Button>
+							</form>
+						</CardContent>
+					</Card>
+
+					<Card className="mt-6">
+						<CardHeader>
+							<CardTitle>
+								Disciplinary Actions List
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead>
+											ID
+										</TableHead>
+										<TableHead>
+											Incident Type
+										</TableHead>
+										<TableHead>
+											Action Taken
+										</TableHead>
+										<TableHead>
+											Terms
+										</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{actions.map(
+										(action) => (
+											<TableRow
+												key={
+													action.DisrActionID
+												}
+											>
+												<TableCell>
+													{
+														action.DisrActionID
+													}
+												</TableCell>
+												<TableCell>
+													{
+														action.Disciplinary_Incident_Type
+													}
+												</TableCell>
+												<TableCell>
+													{
+														action.Disciplinary_action_Taken
+													}
+												</TableCell>
+												<TableCell>
+													{
+														action.Disciplinary_Terms
+													}
+												</TableCell>
+											</TableRow>
+										),
+									)}
+								</TableBody>
+							</Table>
+						</CardContent>
+					</Card>
+				</TabsContent>
+			</Tabs>
 		</div>
 	);
 }
