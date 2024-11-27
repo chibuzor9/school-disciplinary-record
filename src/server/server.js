@@ -35,9 +35,7 @@ app.get('/api/students', async (req, res) => {
 		const [results] = await db.query(
 			'SELECT * FROM STUDENTS',
 		);
-		res.json(
-			results.length ? results : dummyData.students,
-		);
+		res.json(results);
 	} catch (err) {
 		console.error('Error fetching students:', err);
 		res.status(500).json({ error: 'Database error' });
@@ -76,17 +74,48 @@ app.post('/api/students', async (req, res) => {
 	}
 });
 
-// Incident routes
+/** Incident Routes*/
+// Get Route
 app.get('/api/incidents', async (req, res) => {
 	try {
 		const [results] = await db.query(
 			'SELECT * FROM INCIDENT',
 		);
 		res.json(
-			results.length ? results : dummyData.incidents,
+			results,
 		);
 	} catch (err) {
 		console.error('Error fetching incidents:', err);
+		res.status(500).json({ error: 'Database error' });
+	}
+});
+
+// Post Route
+app.post('/api/incidents', async (req, res) => {
+	const {
+		Incident_name,
+		Incident_date,
+		Incident_location,
+		Incident_sl,
+	} = req.body;
+	try {
+		const [result] = await db.query(
+			'INSERT INTO INCIDENT (Incident_name, Incident_date, Incident_location, Incident_sl) VALUES (?, ?, ?, ?)',
+			[
+				Incident_name,
+				Incident_date,
+				Incident_location,
+				Incident_sl,
+			],
+		);
+
+		res.json({
+			success: true,
+			message: 'Incident submitted successfully',
+			appealId: result.insertId,
+		});
+	} catch (err) {
+		console.error('Error submitting appeal:', err);
 		res.status(500).json({ error: 'Database error' });
 	}
 });
@@ -182,22 +211,6 @@ app.post('/api/submit-appeal', async (req, res) => {
 });
 
 const dummyData = {
-	incidents: [
-		{
-			id: 'INC001',
-			inc_name: 'Tardiness',
-			inc_date: '2023-05-15',
-			inc_loc: 'Main Building',
-			inc_sl: 'Low',
-		},
-		{
-			id: 'INC002',
-			inc_name: 'Cheating',
-			inc_date: '2023-05-18',
-			inc_loc: 'Exam Hall',
-			inc_sl: 'High',
-		},
-	],
 	disciplinaryRecords: [
 		{
 			id: 'DISR001',

@@ -34,48 +34,64 @@ import React from 'react';
 const studentSchema = z.object({
 	first_name: z.string().min(1, 'First name is required'),
 	last_name: z.string().min(1, 'Last name is required'),
-	date_of_birth: z
-		.string()
-		.min(1, 'Date of birth is required'),
+	date_of_birth: z.date({
+		required_error: 'Date of birth is required',
+	}),
 	email: z.string().email('Invalid email'),
 	parent_no: z
 		.string()
 		.min(1, 'Parent number is required'),
 });
 
-const actionSchema = z.object({
-	incident_id: z
+const incidentSchema = z.object({
+	Incident_name: z
 		.string()
-		.min(1, 'Incident ID is required'),
-	dis_it: z.string().min(1, 'Action Type is required'),
-	action_taken: z
+		.min(1, 'Incident name is required'),
+	Incident_date: z.date({
+		required_error: 'Incident date is required',
+	}),
+	Incident_location: z
+		.string()
+		.min(1, 'Incident location is required'),
+	Incident_sl: z
+		.string()
+		.min(1, 'Severity level is required'),
+});
+
+const disciplinaryActionSchema = z.object({
+	Disciplinary_Incident_Type: z
+		.string()
+		.min(1, 'Incident type is required'),
+	Disciplinary_action_Taken: z
 		.string()
 		.min(1, 'Action taken is required'),
-	dis_terms: z.string().min(1, 'Terms are required'),
+	Disciplinary_Terms: z
+		.string()
+		.min(1, 'Terms are required'),
 });
 
 interface Student {
+	StudentID: number;
 	first_name: string;
 	last_name: string;
-	date_of_birth: string;
+	date_of_birth: Date;
 	email: string;
 	parent_no: string;
 }
 
 interface Incident {
-	id: string;
-	inc_name: string;
-	inc_date: string;
-	inc_loc: string;
-	inc_sl: string;
+	IncidentID: number;
+	Incident_name: string;
+	Incident_date: Date;
+	Incident_location: string;
+	Incident_sl: string;
 }
 
 interface DisciplinaryAction {
-	id: string;
-	incident_id: string;
-	dis_it: string;
-	action_taken: string;
-	dis_terms: string;
+	DisrActionID: number;
+	Disciplinary_Incident_Type: string;
+	Disciplinary_action_Taken: string;
+	Disciplinary_Terms: string;
 }
 
 export default function StaffDashboard() {
@@ -87,12 +103,6 @@ export default function StaffDashboard() {
 	const [actions, setActions] = useState<
 		DisciplinaryAction[]
 	>([]);
-	const [loadingStudents, setLoadingStudents] =
-		useState(true);
-	const [loadingIncidents, setLoadingIncidents] =
-		useState(true);
-	const [loadingActions, setLoadingActions] =
-		useState(true);
 	const [activeTab, setActiveTab] = useState('students');
 
 	const studentForm = useForm({
@@ -100,116 +110,126 @@ export default function StaffDashboard() {
 		defaultValues: {
 			first_name: '',
 			last_name: '',
-			date_of_birth: '',
+			date_of_birth: new Date(),
 			email: '',
 			parent_no: '',
 		},
 	});
 
-	const actionForm = useForm({
-		resolver: zodResolver(actionSchema),
+	const incidentForm = useForm({
+		resolver: zodResolver(incidentSchema),
 		defaultValues: {
-			incident_id: '',
-			dis_it: '',
-			action_taken: '',
-			dis_terms: '',
+			Incident_name: '',
+			Incident_date: new Date(),
+			Incident_location: '',
+			Incident_sl: '',
+		},
+	});
+
+	const actionForm = useForm({
+		resolver: zodResolver(disciplinaryActionSchema),
+		defaultValues: {
+			Disciplinary_Incident_Type: '',
+			Disciplinary_action_Taken: '',
+			Disciplinary_Terms: '',
 		},
 	});
 
 	useEffect(() => {
-		const fetchStudents = async () => {
-			try {
-				const response = await axios.get(
-					'http://localhost:5000/api/students',
-				);
-				setStudents(response.data);
-			} catch (error) {
-				console.error(
-					'Error fetching students:',
-					error,
-				);
-				toast({
-					title: 'Error',
-					description: 'Failed to fetch students',
-					variant: 'destructive',
-				});
-			} finally {
-				setLoadingStudents(false);
-			}
-		};
-
 		fetchStudents();
-	}, []);
-
-	useEffect(() => {
-		const fetchIncidents = async () => {
-			try {
-				const response = await axios.get(
-					'http://localhost:5000/api/incidents',
-				);
-				setIncidents(response.data);
-			} catch (error) {
-				console.error(
-					'Error fetching incidents:',
-					error,
-				);
-				toast({
-					title: 'Error',
-					description:
-						'Failed to fetch incidents',
-					variant: 'destructive',
-				});
-			} finally {
-				setLoadingIncidents(false);
-			}
-		};
-
 		fetchIncidents();
-	}, []);
-
-	useEffect(() => {
-		const fetchActions = async () => {
-			try {
-				const response = await axios.get(
-					'http://localhost:5000/api/disciplinary-actions',
-				);
-				setActions(response.data);
-			} catch (error) {
-				console.error(
-					'Error fetching actions:',
-					error,
-				);
-				toast({
-					title: 'Error',
-					description:
-						'Failed to fetch disciplinary actions',
-					variant: 'destructive',
-				});
-			} finally {
-				setLoadingActions(false);
-			}
-		};
-
 		fetchActions();
 	}, []);
+
+	const fetchStudents = async () => {
+		try {
+			const response = await axios.get(
+				'http://localhost:5000/api/students',
+			);
+			setStudents(
+				response.data.map((student: any) => ({
+					...student,
+					date_of_birth: new Date(
+						student.date_of_birth,
+					),
+				})),
+			);
+		} catch (error) {
+			console.error(
+				'Error fetching students:',
+				error,
+			);
+			toast({
+				title: 'Error',
+				description: 'Failed to fetch students',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const fetchIncidents = async () => {
+		try {
+			const response = await axios.get(
+				'http://localhost:5000/api/incidents',
+			);
+			setIncidents(
+				response.data.map((incident: any) => ({
+					...incident,
+					Incident_date: new Date(
+						incident.Incident_date,
+					),
+				})),
+			);
+		} catch (error) {
+			console.error(
+				'Error fetching incidents:',
+				error,
+			);
+			toast({
+				title: 'Error',
+				description: 'Failed to fetch incidents',
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const fetchActions = async () => {
+		try {
+			const response = await axios.get(
+				'http://localhost:5000/api/disciplinary-actions',
+			);
+			setActions(response.data);
+		} catch (error) {
+			console.error('Error fetching actions:', error);
+			toast({
+				title: 'Error',
+				description:
+					'Failed to fetch disciplinary actions',
+				variant: 'destructive',
+			});
+		}
+	};
 
 	const onSubmitStudent = async (
 		data: z.infer<typeof studentSchema>,
 	) => {
 		try {
+			const formattedData = {
+				...data,
+				date_of_birth: data.date_of_birth
+					.toISOString()
+					.split('T')[0],
+			};
 			await axios.post(
 				'http://localhost:5000/api/students',
-				data,
+				formattedData,
 			);
 			toast({
 				title: 'Success',
 				description: 'Student added successfully',
 			});
 			studentForm.reset();
-			const response = await axios.get(
-				'http://localhost:5000/api/students',
-			);
-			setStudents(response.data);
+			fetchStudents();
 		} catch (error) {
 			console.error('Error adding student:', error);
 			toast({
@@ -220,8 +240,39 @@ export default function StaffDashboard() {
 		}
 	};
 
+	const onSubmitIncident = async (
+		data: z.infer<typeof incidentSchema>,
+	) => {
+		try {
+			const formattedData = {
+				...data,
+				Incident_date:
+					data.Incident_date.toISOString().split(
+						'T',
+					)[0],
+			};
+			await axios.post(
+				'http://localhost:5000/api/incidents',
+				formattedData,
+			);
+			toast({
+				title: 'Success',
+				description: 'Incident added successfully',
+			});
+			incidentForm.reset();
+			fetchIncidents();
+		} catch (error) {
+			console.error('Error adding incident:', error);
+			toast({
+				title: 'Error',
+				description: 'Failed to add incident',
+				variant: 'destructive',
+			});
+		}
+	};
+
 	const onSubmitAction = async (
-		data: z.infer<typeof actionSchema>,
+		data: z.infer<typeof disciplinaryActionSchema>,
 	) => {
 		try {
 			await axios.post(
@@ -234,10 +285,7 @@ export default function StaffDashboard() {
 					'Disciplinary action added successfully',
 			});
 			actionForm.reset();
-			const response = await axios.get(
-				'http://localhost:5000/api/disciplinary-actions',
-			);
-			setActions(response.data);
+			fetchActions();
 		} catch (error) {
 			console.error('Error adding action:', error);
 			toast({
@@ -299,6 +347,10 @@ export default function StaffDashboard() {
 								<Input
 									{...studentForm.register(
 										'date_of_birth',
+										{
+											valueAsDate:
+												true,
+										},
 									)}
 									type="date"
 									placeholder="Date of Birth"
@@ -368,9 +420,19 @@ export default function StaffDashboard() {
 												</TableCell>
 												<TableCell>{`${student.first_name} ${student.last_name}`}</TableCell>
 												<TableCell>
-													{
-														student.date_of_birth
-													}
+													{student.date_of_birth
+														.toLocaleDateString(
+															'en-GB',
+															{
+																day: '2-digit',
+																month: 'short',
+																year: 'numeric',
+															},
+														)
+														.replace(
+															/ /g,
+															'-',
+														)}
 												</TableCell>
 												<TableCell>
 													{
@@ -395,6 +457,58 @@ export default function StaffDashboard() {
 					<Card>
 						<CardHeader>
 							<CardTitle>
+								Add Incident
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<form
+								onSubmit={incidentForm.handleSubmit(
+									onSubmitIncident,
+								)}
+								className="space-y-4"
+							>
+								<Input
+									{...incidentForm.register(
+										'Incident_name',
+									)}
+									placeholder="Incident Name"
+								/>
+								<Input
+									{...incidentForm.register(
+										'Incident_date',
+										{
+											valueAsDate:
+												true,
+										},
+									)}
+									type="date"
+									placeholder="Incident Date"
+								/>
+								<Input
+									{...incidentForm.register(
+										'Incident_location',
+									)}
+									placeholder="Incident Location"
+								/>
+								<Input
+									{...incidentForm.register(
+										'Incident_sl',
+									)}
+									placeholder="Severity Level"
+								/>
+								<Button
+									type="submit"
+									className="w-full"
+								>
+									Add Incident
+								</Button>
+							</form>
+						</CardContent>
+					</Card>
+
+					<Card className="mt-6">
+						<CardHeader>
+							<CardTitle>
 								Incidents List
 							</CardTitle>
 						</CardHeader>
@@ -417,9 +531,6 @@ export default function StaffDashboard() {
 										<TableHead>
 											Severity Level
 										</TableHead>
-										<TableHead>
-											Actions
-										</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
@@ -427,47 +538,41 @@ export default function StaffDashboard() {
 										(incident) => (
 											<TableRow
 												key={
-													incident.id
+													incident.IncidentID
 												}
 											>
 												<TableCell>
 													{
-														incident.id
+														incident.IncidentID
 													}
 												</TableCell>
 												<TableCell>
 													{
-														incident.inc_name
+														incident.Incident_name
+													}
+												</TableCell>
+												<TableCell>
+													{incident.Incident_date.toLocaleDateString(
+														'en-GB',
+														{
+															day: '2-digit',
+															month: 'short',
+															year: 'numeric',
+														},
+													).replace(
+														/ /g,
+														'-',
+													)}
+												</TableCell>
+												<TableCell>
+													{
+														incident.Incident_location
 													}
 												</TableCell>
 												<TableCell>
 													{
-														incident.inc_date
+														incident.Incident_sl
 													}
-												</TableCell>
-												<TableCell>
-													{
-														incident.inc_loc
-													}
-												</TableCell>
-												<TableCell>
-													{
-														incident.inc_sl
-													}
-												</TableCell>
-												<TableCell>
-													<Button
-														onClick={() =>
-															actionForm.setValue(
-																'incident_id',
-																incident.id,
-															)
-														}
-														className="mr-2"
-													>
-														Add
-														Action
-													</Button>
 												</TableCell>
 											</TableRow>
 										),
@@ -494,25 +599,19 @@ export default function StaffDashboard() {
 							>
 								<Input
 									{...actionForm.register(
-										'incident_id',
+										'Disciplinary_Incident_Type',
 									)}
-									placeholder="Incident ID"
-								/>
-								<Input
-									{...actionForm.register(
-										'dis_it',
-									)}
-									placeholder="Action Type"
-								/>
-								<Input
-									{...actionForm.register(
-										'action_taken',
-									)}
-									placeholder="Action Taken"
+									placeholder="Incident Type"
 								/>
 								<Textarea
 									{...actionForm.register(
-										'dis_terms',
+										'Disciplinary_action_Taken',
+									)}
+									placeholder="Action Taken"
+								/>
+								<Input
+									{...actionForm.register(
+										'Disciplinary_Terms',
 									)}
 									placeholder="Terms"
 								/>
@@ -537,10 +636,10 @@ export default function StaffDashboard() {
 								<TableHeader>
 									<TableRow>
 										<TableHead>
-											Incident ID
+											ID
 										</TableHead>
 										<TableHead>
-											Action Type
+											Incident Type
 										</TableHead>
 										<TableHead>
 											Action Taken
@@ -555,27 +654,27 @@ export default function StaffDashboard() {
 										(action) => (
 											<TableRow
 												key={
-													action.id
+													action.DisrActionID
 												}
 											>
 												<TableCell>
 													{
-														action.incident_id
+														action.DisrActionID
 													}
 												</TableCell>
 												<TableCell>
 													{
-														action.dis_it
+														action.Disciplinary_Incident_Type
 													}
 												</TableCell>
 												<TableCell>
 													{
-														action.action_taken
+														action.Disciplinary_action_Taken
 													}
 												</TableCell>
 												<TableCell>
 													{
-														action.dis_terms
+														action.Disciplinary_Terms
 													}
 												</TableCell>
 											</TableRow>

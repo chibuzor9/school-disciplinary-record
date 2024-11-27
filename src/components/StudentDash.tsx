@@ -26,26 +26,26 @@ import axios from 'axios';
 import React from 'react';
 
 const appealSchema = z.object({
-	appeal_name: z
+	Appeal_name: z
 		.string()
 		.min(1, 'Appeal name is required'),
-	appeal_rsn: z
+	Appeal_reason: z
 		.string()
 		.min(
 			10,
 			'Appeal reason must be at least 10 characters',
 		),
-	appeal_se: z
+	Appeal_Status: z
 		.string()
 		.min(1, 'Appeal status is required'),
 });
 
 interface Incident {
-	id: string;
-	inc_name: string;
-	inc_date: string;
-	inc_loc: string;
-	inc_sl: string;
+	IncidentID: number;
+	Incident_name: string;
+	Incident_date: string;
+	Incident_location: string;
+	Incident_sl: string;
 }
 
 export default function StudentDashboard() {
@@ -59,9 +59,9 @@ export default function StudentDashboard() {
 	const form = useForm({
 		resolver: zodResolver(appealSchema),
 		defaultValues: {
-			appeal_name: '',
-			appeal_rsn: '',
-			appeal_se: 'Pending',
+			Appeal_name: '',
+			Appeal_reason: '',
+			Appeal_Status: 'Pending',
 		},
 	});
 
@@ -101,7 +101,7 @@ export default function StudentDashboard() {
 	) => {
 		try {
 			await axios.post(
-				'http://localhost:5000/api/submit-appeal',
+				'http://localhost:5000/api/appeals',
 				data,
 			);
 			toast({
@@ -162,32 +162,32 @@ export default function StudentDashboard() {
 									(incident) => (
 										<TableRow
 											key={
-												incident.id
+												incident.IncidentID
 											}
 										>
 											<TableCell>
 												{
-													incident.id
+													incident.IncidentID
 												}
 											</TableCell>
 											<TableCell>
 												{
-													incident.inc_name
+													incident.Incident_name
+												}
+											</TableCell>
+											<TableCell>
+												{new Date(
+													incident.Incident_date,
+												).toLocaleDateString()}
+											</TableCell>
+											<TableCell>
+												{
+													incident.Incident_location
 												}
 											</TableCell>
 											<TableCell>
 												{
-													incident.inc_date
-												}
-											</TableCell>
-											<TableCell>
-												{
-													incident.inc_loc
-												}
-											</TableCell>
-											<TableCell>
-												{
-													incident.inc_sl
+													incident.Incident_sl
 												}
 											</TableCell>
 										</TableRow>
@@ -214,17 +214,21 @@ export default function StudentDashboard() {
 					>
 						<Input
 							{...form.register(
-								'appeal_name',
+								'Appeal_name',
 							)}
 							placeholder="Appeal Name"
 						/>
 						<Textarea
-							{...form.register('appeal_rsn')}
+							{...form.register(
+								'Appeal_reason',
+							)}
 							placeholder="Please provide details of your appeal..."
 							className="min-h-[100px]"
 						/>
 						<Input
-							{...form.register('appeal_se')}
+							{...form.register(
+								'Appeal_Status',
+							)}
 							value="Pending"
 							readOnly
 							className="bg-gray-100"
