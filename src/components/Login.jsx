@@ -8,7 +8,7 @@ const Login = (props) => {
 	const location = useLocation();
 
 	const placeholder =
-		location.pathname === '/teacher'
+		location.pathname === '/staff'
 			? 'Username'
 			: location.pathname === '/student'
 				? 'Matric No'
@@ -24,7 +24,13 @@ const Login = (props) => {
 			password === 'asdf'
 		) {
 			// eslint-disable-next-line react/prop-types
-			props.onSuccess();
+			props.onSuccess('Admin');
+		} else if (
+			username === '1' ||
+			password === 'asdf'
+		) {
+			// eslint-disable-next-line react/prop-types
+			props.onSuccess('Staff');
 		} else {
 			alert('Wrong Email or Password');
 			setUsername('');
