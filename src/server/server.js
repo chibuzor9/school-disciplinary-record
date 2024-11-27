@@ -17,7 +17,7 @@ async function connectToDatabase() {
 			host: 'localhost',
 			user: 'root',
 			password: '',
-			database: 'disciplinary',
+			database: 'cosc333_db2',
 		});
 		console.log('Connected to MySQL database');
 	} catch (err) {
@@ -28,7 +28,8 @@ async function connectToDatabase() {
 // Initialize database connection
 connectToDatabase();
 
-// Student routes
+/** Student routes */
+//Read Route
 app.get('/api/students', async (req, res) => {
 	try {
 		const [results] = await db.query(
@@ -43,11 +44,43 @@ app.get('/api/students', async (req, res) => {
 	}
 });
 
+//Post Route
+app.post('/api/students', async (req, res) => {
+	const {
+		first_name,
+		last_name,
+		date_of_birth,
+		email,
+		parent_no,
+	} = req.body;
+	try {
+		const [result] = await db.query(
+			'INSERT INTO Students (first_name, last_name, date_of_birth, email, parent_no) VALUES (?, ?, ?, ?, ?)',
+			[
+				first_name,
+				last_name,
+				date_of_birth,
+				email,
+				parent_no,
+			],
+		);
+
+		res.json({
+			success: true,
+			message: 'Student submitted successfully',
+			appealId: result.insertId,
+		});
+	} catch (err) {
+		console.error('Error submitting appeal:', err);
+		res.status(500).json({ error: 'Database error' });
+	}
+});
+
 // Incident routes
 app.get('/api/incidents', async (req, res) => {
 	try {
 		const [results] = await db.query(
-			'SELECT * FROM INCIDENTS',
+			'SELECT * FROM INCIDENT',
 		);
 		res.json(
 			results.length ? results : dummyData.incidents,
@@ -62,7 +95,7 @@ app.get('/api/incidents', async (req, res) => {
 app.get('/api/disciplinary-records', async (req, res) => {
 	try {
 		const [results] = await db.query(
-			'SELECT * FROM DISCIPLINARYRECORDS',
+			'SELECT * FROM DISCIPLINARY_RECORD',
 		);
 		res.json(
 			results.length
@@ -82,7 +115,7 @@ app.get('/api/disciplinary-records', async (req, res) => {
 app.get('/api/disciplinary-actions', async (req, res) => {
 	try {
 		const [results] = await db.query(
-			'SELECT * FROM DISCIPLINARYACTIONS',
+			'SELECT * FROM DISCIPLINARY_ACTION',
 		);
 		res.json(
 			results.length
@@ -98,8 +131,6 @@ app.get('/api/disciplinary-actions', async (req, res) => {
 	}
 });
 
-/** 
-
 // Admin routes
 app.get('/api/admins', async (req, res) => {
 	try {
@@ -114,8 +145,6 @@ app.get('/api/admins', async (req, res) => {
 		res.status(500).json({ error: 'Database error' });
 	}
 });
-
-*/
 
 // Appeal routes
 app.get('/api/appeals', async (req, res) => {
@@ -153,24 +182,6 @@ app.post('/api/submit-appeal', async (req, res) => {
 });
 
 const dummyData = {
-	students: [
-		{
-			id: 'STU001',
-			first_name: 'John',
-			last_name: 'Doe',
-			date_of_birth: '2000-01-15',
-			email: 'john.doe@email.com',
-			parent_no: '1234567890',
-		},
-		{
-			id: 'STU002',
-			first_name: 'Jane',
-			last_name: 'Smith',
-			date_of_birth: '2001-03-22',
-			email: 'jane.smith@email.com',
-			parent_no: '2345678901',
-		},
-	],
 	incidents: [
 		{
 			id: 'INC001',
