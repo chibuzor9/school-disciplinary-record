@@ -71,12 +71,13 @@ const disciplinaryActionSchema = z.object({
 });
 
 interface Student {
-	StudentID: number;
-	first_name: string;
-	last_name: string;
-	date_of_birth: Date;
-	email: string;
-	parent_no: string;
+  StudentID: number;
+  first_name: string;
+  last_name: string;
+  date_of_birth: Date;
+  email: string;
+  parent_no: string;
+  disciplinary_history: DisciplinaryAction[]; // New field for disciplinary history
 }
 
 interface Incident {
@@ -85,13 +86,16 @@ interface Incident {
 	Incident_date: Date;
 	Incident_location: string;
 	Incident_sl: string;
+	assigned_to: string; // New field for staff assignment
+	status: 'pending' | 'under investigation' | 'resolved'; // New field for status tracking
 }
 
 interface DisciplinaryAction {
-	DisrActionID: number;
-	Disciplinary_Incident_Type: string;
-	Disciplinary_action_Taken: string;
-	Disciplinary_Terms: string;
+  DisrActionID: number;
+  Disciplinary_Incident_Type: string;
+  Disciplinary_action_Taken: string;
+  Disciplinary_Terms: string;
+  effectiveness: 'effective' | 'ineffective'; // New field for tracking effectiveness
 }
 
 export default function StaffDashboard() {
