@@ -366,25 +366,30 @@ export default function AdminDashboard() {
 
 	const onSubmit = async (data: any) => {
 		try {
+			const singularTab = activeTab.endsWith('s')
+				? activeTab.slice(0, -1)
+				: activeTab; // Remove trailing 's' if it exists
+
 			if (dialogMode === 'edit') {
-				await axios.post(
-					`http://localhost:5000/api/${activeTab}/${editingItemId}`,
+				await axios.put(
+					`http://localhost:5000/api/${singularTab}/${editingItemId}`,
 					data,
 				);
 				toast({
 					title: 'Success',
-					description: `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1, -1)} updated successfully`,
+					description: `${singularTab.charAt(0).toUpperCase() + singularTab.slice(1)} updated successfully`,
 				});
 			} else {
 				await axios.post(
-					`http://localhost:5000/api/${activeTab}`,
+					`http://localhost:5000/api/${singularTab}`,
 					data,
 				);
 				toast({
 					title: 'Success',
-					description: `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1, -1)} added successfully`,
+					description: `${singularTab.charAt(0).toUpperCase() + singularTab.slice(1)} added successfully`,
 				});
 			}
+
 			setIsDialogOpen(false);
 			fetchData();
 		} catch (error) {
@@ -914,9 +919,16 @@ export default function AdminDashboard() {
 														</TableCell>
 														<TableCell>{`${student.first_name} ${student.last_name}`}</TableCell>
 														<TableCell>
-															{
-																student.date_of_birth
-															}
+															{new Date(
+																student.date_of_birth,
+															).toLocaleDateString(
+																'en-GB',
+																{
+																	year: 'numeric',
+																	month: 'short',
+																	day: '2-digit',
+																},
+															)}
 														</TableCell>
 														<TableCell>
 															{
@@ -933,7 +945,7 @@ export default function AdminDashboard() {
 																onClick={() =>
 																	handleEdit(
 																		student,
-																		'students',
+																		'student',
 																	)
 																}
 																className="mr-2"
@@ -977,9 +989,16 @@ export default function AdminDashboard() {
 															}
 														</TableCell>
 														<TableCell>
-															{
-																incident.Incident_date
-															}
+															{new Date(
+																incident.Incident_date,
+															).toLocaleDateString(
+																'en-GB',
+																{
+																	year: 'numeric',
+																	month: 'short',
+																	day: '2-digit',
+																},
+															)}
 														</TableCell>
 														<TableCell>
 															{
@@ -996,7 +1015,7 @@ export default function AdminDashboard() {
 																onClick={() =>
 																	handleEdit(
 																		incident,
-																		'incidents',
+																		'incident',
 																	)
 																}
 																className="mr-2"
@@ -1054,7 +1073,7 @@ export default function AdminDashboard() {
 																onClick={() =>
 																	handleEdit(
 																		action,
-																		'actions',
+																		'action',
 																	)
 																}
 																className="mr-2"
@@ -1159,7 +1178,7 @@ export default function AdminDashboard() {
 																onClick={() =>
 																	handleEdit(
 																		record,
-																		'records',
+																		'record',
 																	)
 																}
 																className="mr-2"
@@ -1200,9 +1219,16 @@ export default function AdminDashboard() {
 															}
 														</TableCell>
 														<TableCell>
-															{
-																admin.Admin_date
-															}
+															{new Date(
+																admin.Admin_date,
+															).toLocaleDateString(
+																'en-GB',
+																{
+																	year: 'numeric',
+																	month: 'short',
+																	day: '2-digit',
+																},
+															)}
 														</TableCell>
 														<TableCell>
 															{
@@ -1219,7 +1245,7 @@ export default function AdminDashboard() {
 																onClick={() =>
 																	handleEdit(
 																		admin,
-																		'admins',
+																		'admin',
 																	)
 																}
 																className="mr-2"
@@ -1277,7 +1303,7 @@ export default function AdminDashboard() {
 																onClick={() =>
 																	handleEdit(
 																		appeal,
-																		'appeals',
+																		'appeal',
 																	)
 																}
 																className="mr-2"
