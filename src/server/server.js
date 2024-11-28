@@ -28,14 +28,171 @@ async function connectToDatabase() {
 // Initialize database connection
 connectToDatabase();
 
-/** ********************************************************************************************* */
+// Generic CRUD operations
+const crudOperations = (table) => ({
+	getAll: async (req, res) => {
+		try {
+			const [results] = await db.query(
+				`SELECT * FROM ${table}`,
+			);
+			res.json(results);
+		} catch (err) {
+			console.error(`Error fetching ${table}:`, err);
+			res.status(500).json({
+				error: 'Database error',
+			});
+		}
+	},
 
-/** Student routes */
-//Read Route
+	getOne: async (req, res) => {
+		try {
+			const [results] = await db.query(
+				`SELECT * FROM ${table} WHERE id = ?`,
+				[req.params.id],
+			);
+			if (results.length > 0) {
+				res.json(results[0]);
+			} else {
+				res.status(404).json({
+					error: 'Not found',
+				});
+			}
+		} catch (err) {
+			console.error(
+				`Error fetching ${table} entry:`,
+				err,
+			);
+			res.status(500).json({
+				error: 'Database error',
+			});
+		}
+	},
+
+	create: async (req, res) => {
+		try {
+			const columns = Object.keys(req.body).join(
+				', ',
+			);
+			const placeholders = Object.keys(req.body)
+				.map(() => '?')
+				.join(', ');
+			const values = Object.values(req.body);
+
+			const [result] = await db.query(
+				`INSERT INTO ${table} (${columns}) VALUES (${placeholders})`,
+				values,
+			);
+
+			res.json({
+				success: true,
+				message: `${table} entry added successfully`,
+				id: result.insertId,
+			});
+		} catch (err) {
+			console.error(
+				`Error adding ${table} entry:`,
+				err,
+			);
+			res.status(500).json({
+				error: 'Database error',
+			});
+		}
+	},
+
+	update: async (req, res) => {
+		try {
+			const id = req.params.id;
+			const updates = Object.entries(req.body)
+				// eslint-disable-next-line no-unused-vars
+				.map(([key, value]) => `${key} = ?`)
+				.join(', ');
+			const values = [...Object.values(req.body), id];
+
+			await db.query(
+				`UPDATE ${table} SET ${updates} WHERE id = ?`,
+				values,
+			);
+
+			res.json({
+				success: true,
+				message: `${table} entry updated successfully`,
+			});
+		} catch (err) {
+			console.error(
+				`Error updating ${table} entry:`,
+				err,
+			);
+			res.status(500).json({
+				error: 'Database error',
+			});
+		}
+	},
+
+	delete: async (req, res) => {
+		try {
+			const id = req.params.id;
+
+			await db.query(
+				`DELETE FROM ${table} WHERE id = ?`,
+				[id],
+			);
+
+			res.json({
+				success: true,
+				message: `${table} entry deleted successfully`,
+			});
+		} catch (err) {
+			console.error(
+				`Error deleting ${table} entry:`,
+				err,
+			);
+			res.status(500).json({
+				error: 'Database error',
+			});
+		}
+	},
+});
+
+// Apply CRUD operations to all tables
+const tables = [
+	'Students',
+	'Incident',
+	'Disciplinary_Record',
+	'Disciplinary_Action',
+	'Admin',
+	'Appeal',
+];
+
+tables.forEach((table) => {
+	const operations = crudOperations(table);
+
+	app.get(
+		`/api/${table.toLowerCase()}`,
+		operations.getAll,
+	);
+	app.get(
+		`/api/${table.toLowerCase()}/:id`,
+		operations.getOne,
+	);
+	app.post(
+		`/api/${table.toLowerCase()}`,
+		operations.create,
+	);
+	app.put(
+		`/api/${table.toLowerCase()}/:id`,
+		operations.update,
+	);
+	app.delete(
+		`/api/${table.toLowerCase()}/:id`,
+		operations.delete,
+	);
+});
+
+// Specific routes for Students
 app.get('/api/students', async (req, res) => {
 	try {
 		const [results] = await db.query(
-			'SELECT * FROM STUDENTS',
+			'SELECT * FROM Students',
 		);
 		res.json(results);
 	} catch (err) {
@@ -44,7 +201,6 @@ app.get('/api/students', async (req, res) => {
 	}
 });
 
-//Post Route
 app.post('/api/students', async (req, res) => {
 	const {
 		first_name,
@@ -64,26 +220,22 @@ app.post('/api/students', async (req, res) => {
 				parent_no,
 			],
 		);
-
 		res.json({
 			success: true,
-			message: 'Student submitted successfully',
-			appealId: result.insertId,
+			message: 'Student added successfully',
+			studentId: result.insertId,
 		});
 	} catch (err) {
-		console.error('Error submitting appeal:', err);
+		console.error('Error adding student:', err);
 		res.status(500).json({ error: 'Database error' });
 	}
 });
-/** ********************************************************************************************* */
 
-/** ********************************************************************************************* */
-// Incident Routes
-// Get Route
+// Specific routes for Incidents
 app.get('/api/incidents', async (req, res) => {
 	try {
 		const [results] = await db.query(
-			'SELECT * FROM INCIDENT',
+			'SELECT * FROM Incident',
 		);
 		res.json(results);
 	} catch (err) {
@@ -92,7 +244,6 @@ app.get('/api/incidents', async (req, res) => {
 	}
 });
 
-// Post Route
 app.post('/api/incidents', async (req, res) => {
 	const {
 		Incident_name,
@@ -102,7 +253,7 @@ app.post('/api/incidents', async (req, res) => {
 	} = req.body;
 	try {
 		const [result] = await db.query(
-			'INSERT INTO INCIDENT (Incident_name, Incident_date, Incident_location, Incident_sl) VALUES (?, ?, ?, ?)',
+			'INSERT INTO Incident (Incident_name, Incident_date, Incident_location, Incident_sl) VALUES (?, ?, ?, ?)',
 			[
 				Incident_name,
 				Incident_date,
@@ -110,109 +261,22 @@ app.post('/api/incidents', async (req, res) => {
 				Incident_sl,
 			],
 		);
-
 		res.json({
 			success: true,
-			message: 'Incident submitted successfully',
-			appealId: result.insertId,
+			message: 'Incident added successfully',
+			incidentId: result.insertId,
 		});
 	} catch (err) {
-		console.error('Error submitting appeal:', err);
-		res.status(500).json({ error: 'Database error' });
-	}
-});
-/** ********************************************************************************************* */
-
-/** ********************************************************************************************* */
-// Admin routes
-//Get route
-app.get('/api/admins', async (req, res) => {
-	try {
-		const [results] = await db.query(
-			'SELECT * FROM ADMIN',
-		);
-		res.json(results);
-	} catch (err) {
-		console.error('Error fetching admins:', err);
+		console.error('Error adding incident:', err);
 		res.status(500).json({ error: 'Database error' });
 	}
 });
 
-//Post Route
-app.post('/api/admins', async (req, res) => {
-	const {
-		admin_name,
-		admin_date,
-		admin_location,
-		admin_sl,
-	} = req.body;
-
-	try {
-		const [result] = await db.query(
-			'INSERT INTO ADMIN (Admin_name, Admin_date, Admin_location, Admin_sl) VALUES (?, ?, ?, ?)',
-			[
-				admin_name,
-				admin_date,
-				admin_location,
-				admin_sl,
-			],
-		);
-
-		res.json({
-			success: true,
-			message: 'Admin submitted successfully',
-			adminId: result.insertId,
-		});
-	} catch (err) {
-		console.error('Error submitting admin:', err);
-		res.status(500).json({ error: 'Database error' });
-	}
-});
-/** ********************************************************************************************* */
-
-/** ********************************************************************************************* */
-// Appeal Routes
-app.get('/api/appeals', async (req, res) => {
-	try {
-		const [results] = await db.query(
-			'SELECT * FROM APPEAL',
-		);
-		res.json(results);
-	} catch (err) {
-		console.error('Error fetching appeals:', err);
-		res.status(500).json({ error: 'Database error' });
-	}
-});
-
-// Post Route
-app.post('/api/appeals', async (req, res) => {
-	const { appeal_name, appeal_reason, appeal_status } =
-		req.body;
-	try {
-		const [result] = await db.query(
-			'INSERT INTO APPEAL (appeal_name, appeal_reason, appeal_status) VALUES (?, ?, ?)',
-			[appeal_name, appeal_reason, appeal_status],
-		);
-
-		res.json({
-			success: true,
-			message: 'Appeal submitted successfully',
-			appealId: result.insertId,
-		});
-	} catch (err) {
-		console.error('Error submitting appeal:', err);
-		res.status(500).json({ error: 'Database error' });
-	}
-});
-/** ********************************************************************************************* */
-
-/** ********************************************************************************************* */
-// Disciplinary Action routes
-// Get Route
+// Specific routes for Disciplinary Actions
 app.get('/api/disciplinary-actions', async (req, res) => {
 	try {
 		const [results] = await db.query(
-			'SELECT * FROM DISCIPLINARY_ACTION',
+			'SELECT * FROM Disciplinary_Action',
 		);
 		res.json(results);
 	} catch (err) {
@@ -224,7 +288,6 @@ app.get('/api/disciplinary-actions', async (req, res) => {
 	}
 });
 
-// Post Route
 app.post('/api/disciplinary-actions', async (req, res) => {
 	const {
 		Disciplinary_Incident_Type,
@@ -233,36 +296,33 @@ app.post('/api/disciplinary-actions', async (req, res) => {
 	} = req.body;
 	try {
 		const [result] = await db.query(
-			'INSERT INTO DISCIPLINARY_ACTION (Disciplinary_Incident_Type, Disciplinary_action_Taken, Disciplinary_Terms) VALUES (?, ?, ?)',
+			'INSERT INTO Disciplinary_Action (Disciplinary_Incident_Type, Disciplinary_action_Taken, Disciplinary_Terms) VALUES (?, ?, ?)',
 			[
 				Disciplinary_Incident_Type,
 				Disciplinary_action_Taken,
 				Disciplinary_Terms,
 			],
 		);
-
 		res.json({
 			success: true,
-			message: 'Appeal submitted successfully',
-			disciplinaryActionId: result.insertId,
+			message:
+				'Disciplinary action added successfully',
+			actionId: result.insertId,
 		});
 	} catch (err) {
 		console.error(
-			'Error submitting Disciplinary Action:',
+			'Error adding disciplinary action:',
 			err,
 		);
 		res.status(500).json({ error: 'Database error' });
 	}
 });
-/** ********************************************************************************************* */
 
-/** ********************************************************************************************* */
-// Disciplinary Record routes
-//  Get Route
+// Specific routes for Disciplinary Records
 app.get('/api/disciplinary-records', async (req, res) => {
 	try {
 		const [results] = await db.query(
-			'SELECT * FROM DISCIPLINARY_RECORD',
+			'SELECT * FROM Disciplinary_Record',
 		);
 		res.json(results);
 	} catch (err) {
@@ -274,7 +334,6 @@ app.get('/api/disciplinary-records', async (req, res) => {
 	}
 });
 
-// Post Route
 app.post('/api/disciplinary-records', async (req, res) => {
 	const {
 		Disciplinary_Record_Description,
@@ -284,7 +343,7 @@ app.post('/api/disciplinary-records', async (req, res) => {
 	} = req.body;
 	try {
 		const [result] = await db.query(
-			'INSERT INTO DISCIPLINARY_RECORD (Disciplinary_Record_Description, Disciplinary_Record_status, StudentID, IncidentID) VALUES (?, ?, ?, ?)',
+			'INSERT INTO Disciplinary_Record (Disciplinary_Record_Description, Disciplinary_Record_status, StudentID, IncidentID) VALUES (?, ?, ?, ?)',
 			[
 				Disciplinary_Record_Description,
 				Disciplinary_Record_status,
@@ -292,24 +351,97 @@ app.post('/api/disciplinary-records', async (req, res) => {
 				IncidentID,
 			],
 		);
-
 		res.json({
 			success: true,
-			message: 'Appeal submitted successfully',
-			disciplinaryRecordId: result.insertId,
+			message:
+				'Disciplinary record added successfully',
+			recordId: result.insertId,
 		});
 	} catch (err) {
 		console.error(
-			'Error submitting Disciplinary Record:',
+			'Error adding disciplinary record:',
 			err,
 		);
 		res.status(500).json({ error: 'Database error' });
 	}
 });
-/** ********************************************************************************************* */
+
+// Specific routes for Admins
+app.get('/api/admins', async (req, res) => {
+	try {
+		const [results] = await db.query(
+			'SELECT * FROM Admin',
+		);
+		res.json(results);
+	} catch (err) {
+		console.error('Error fetching admins:', err);
+		res.status(500).json({ error: 'Database error' });
+	}
+});
+
+app.post('/api/admins', async (req, res) => {
+	const {
+		Admin_name,
+		Admin_date,
+		Admin_location,
+		Admin_sl,
+	} = req.body;
+	try {
+		const [result] = await db.query(
+			'INSERT INTO Admin (Admin_name, Admin_date, Admin_location, Admin_sl) VALUES (?, ?, ?, ?)',
+			[
+				Admin_name,
+				Admin_date,
+				Admin_location,
+				Admin_sl,
+			],
+		);
+		res.json({
+			success: true,
+			message: 'Admin added successfully',
+			adminId: result.insertId,
+		});
+	} catch (err) {
+		console.error('Error adding admin:', err);
+		res.status(500).json({ error: 'Database error' });
+	}
+});
+
+// Specific routes for Appeals
+app.get('/api/appeals', async (req, res) => {
+	try {
+		const [results] = await db.query(
+			'SELECT * FROM Appeal',
+		);
+		res.json(results);
+	} catch (err) {
+		console.error('Error fetching appeals:', err);
+		res.status(500).json({ error: 'Database error' });
+	}
+});
+
+app.post('/api/appeals', async (req, res) => {
+	const { Appeal_name, Appeal_reason, Appeal_Status } =
+		req.body;
+	try {
+		const [result] = await db.query(
+			'INSERT INTO Appeal (Appeal_name, Appeal_reason, Appeal_Status) VALUES (?, ?, ?)',
+			[Appeal_name, Appeal_reason, Appeal_Status],
+		);
+		res.json({
+			success: true,
+			message: 'Appeal added successfully',
+			appealId: result.insertId,
+		});
+	} catch (err) {
+		console.error('Error adding appeal:', err);
+		res.status(500).json({ error: 'Database error' });
+	}
+});
 
 app.listen(PORT, () => {
 	console.log(
 		`Server is running on http://localhost:${PORT}`,
 	);
 });
+

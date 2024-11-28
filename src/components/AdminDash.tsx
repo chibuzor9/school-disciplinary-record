@@ -1,7 +1,8 @@
-'use client';
+import React from 'react';
+('use client');
 
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from './ui/button';
@@ -28,15 +29,35 @@ import {
 } from './ui/tabs';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from './ui/select';
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from './ui/dialog';
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from './ui/popover';
 import axios from 'axios';
-import React from 'react';
 
+// Schema definitions
 const studentSchema = z.object({
+	id: z.string().optional(),
 	first_name: z.string().min(1, 'First name is required'),
 	last_name: z.string().min(1, 'Last name is required'),
-	date_of_birth: z.date({
-		required_error: 'Date of birth is required',
-	}),
+	date_of_birth: z
+		.string()
+		.min(1, 'Date of birth is required'),
 	email: z.string().email('Invalid email'),
 	parent_no: z
 		.string()
@@ -44,12 +65,13 @@ const studentSchema = z.object({
 });
 
 const incidentSchema = z.object({
+	id: z.string().optional(),
 	Incident_name: z
 		.string()
 		.min(1, 'Incident name is required'),
-	Incident_date: z.date({
-		required_error: 'Incident date is required',
-	}),
+	Incident_date: z
+		.string()
+		.min(1, 'Incident date is required'),
 	Incident_location: z
 		.string()
 		.min(1, 'Incident location is required'),
@@ -58,7 +80,8 @@ const incidentSchema = z.object({
 		.min(1, 'Severity level is required'),
 });
 
-const disciplinaryActionSchema = z.object({
+const actionSchema = z.object({
+	id: z.string().optional(),
 	Disciplinary_Incident_Type: z
 		.string()
 		.min(1, 'Incident type is required'),
@@ -70,458 +93,288 @@ const disciplinaryActionSchema = z.object({
 		.min(1, 'Terms are required'),
 });
 
-const disciplinaryRecordSchema = z.object({
+const recordSchema = z.object({
+	id: z.string().optional(),
 	Disciplinary_Record_Description: z
 		.string()
-		.min(1, 'Description is required')
-		.max(
-			255,
-			'Description cannot exceed 255 characters',
-		),
+		.min(1, 'Description is required'),
 	Disciplinary_Record_status: z
 		.string()
-		.min(1, 'Status is required')
-		.max(50, 'Status cannot exceed 50 characters'),
-	StudentID: z
-		.number()
-		.int('Student ID must be an integer')
-		.positive('Student ID must be a positive number'),
+		.min(1, 'Status is required'),
+	StudentID: z.string().min(1, 'Student ID is required'),
 	IncidentID: z
-		.number()
-		.int('Incident ID must be an integer')
-		.positive('Incident ID must be a positive number'),
+		.string()
+		.min(1, 'Incident ID is required'),
 });
 
 const adminSchema = z.object({
-	admin_name: z.string().min(1, 'Admin name is required'),
-	admin_date: z.date({
-		required_error: 'Date of Registration is required',
-	}),
-	admin_location: z
+	id: z.string().optional(),
+	Admin_name: z.string().min(1, 'Admin name is required'),
+	Admin_date: z.string().min(1, 'Date is required'),
+	Admin_location: z
 		.string()
 		.min(1, 'Location is required'),
-	admin_sl: z
+	Admin_sl: z
 		.string()
-		.min(1, 'Severity Level is required'),
+		.min(1, 'Security level is required'),
 });
 
 const appealSchema = z.object({
-	appeal_name: z
+	id: z.string().optional(),
+	Appeal_name: z
 		.string()
 		.min(1, 'Appeal name is required'),
-	appeal_reason: z.string().min(20, 'Reason is required'),
-	appeal_status: z
+	Appeal_reason: z
 		.string()
-		.min(1, 'Appeal Status is required'),
+		.min(1, 'Appeal reason is required'),
+	Appeal_Status: z
+		.string()
+		.min(1, 'Appeal status is required'),
 });
 
+// Interface definitions
 interface Student {
-	StudentID: number;
+	id: string;
 	first_name: string;
 	last_name: string;
-	date_of_birth: Date;
+	date_of_birth: string;
 	email: string;
 	parent_no: string;
 }
 
 interface Incident {
-	IncidentID: number;
+	id: string;
 	Incident_name: string;
-	Incident_date: Date;
+	Incident_date: string;
 	Incident_location: string;
 	Incident_sl: string;
 }
 
 interface DisciplinaryAction {
-	DisrActionID: number;
+	id: string;
 	Disciplinary_Incident_Type: string;
 	Disciplinary_action_Taken: string;
 	Disciplinary_Terms: string;
 }
 
 interface DisciplinaryRecord {
-	recordID: number;
+	id: string;
 	Disciplinary_Record_Description: string;
 	Disciplinary_Record_status: string;
-	StudentID: number;
-	IncidentID: number;
+	StudentID: string;
+	IncidentID: string;
 }
 
 interface Admin {
-	AdminID: number;
+	id: string;
 	Admin_name: string;
-	Admin_date: Date;
+	Admin_date: string;
 	Admin_location: string;
 	Admin_sl: string;
 }
 
 interface Appeal {
-	AppealID: number;
+	id: string;
 	Appeal_name: string;
 	Appeal_reason: string;
 	Appeal_Status: string;
 }
 
-export default function StaffDashboard() {
+export default function AdminDashboard() {
 	const { toast } = useToast();
 	const [students, setStudents] = useState<Student[]>([]);
-	const [admins, setAdmins] = useState<Admin[]>([]);
-	const [appeals, setAppeals] = useState<Appeal[]>([]);
-	const [records, setRecords] = useState<
-		DisciplinaryRecord[]
-	>([]);
 	const [incidents, setIncidents] = useState<Incident[]>(
 		[],
 	);
 	const [actions, setActions] = useState<
 		DisciplinaryAction[]
 	>([]);
+	const [records, setRecords] = useState<
+		DisciplinaryRecord[]
+	>([]);
+	const [admins, setAdmins] = useState<Admin[]>([]);
+	const [appeals, setAppeals] = useState<Appeal[]>([]);
 	const [activeTab, setActiveTab] = useState('students');
+	const [editingItem, setEditingItem] = useState<
+		| Student
+		| Incident
+		| DisciplinaryAction
+		| DisciplinaryRecord
+		| Admin
+		| Appeal
+		| null
+	>(null);
+	const [isAddDialogOpen, setIsAddDialogOpen] =
+		useState(false);
 
-	const studentForm = useForm({
+	const studentForm = useForm<
+		z.infer<typeof studentSchema>
+	>({
 		resolver: zodResolver(studentSchema),
-		defaultValues: {
-			first_name: '',
-			last_name: '',
-			date_of_birth: new Date(),
-			email: '',
-			parent_no: '',
-		},
 	});
 
-	const incidentForm = useForm({
+	const incidentForm = useForm<
+		z.infer<typeof incidentSchema>
+	>({
 		resolver: zodResolver(incidentSchema),
-		defaultValues: {
-			Incident_name: '',
-			Incident_date: new Date(),
-			Incident_location: '',
-			Incident_sl: '',
-		},
 	});
 
-	const actionForm = useForm({
-		resolver: zodResolver(disciplinaryActionSchema),
-		defaultValues: {
-			Disciplinary_Incident_Type: '',
-			Disciplinary_action_Taken: '',
-			Disciplinary_Terms: '',
-		},
+	const actionForm = useForm<
+		z.infer<typeof actionSchema>
+	>({
+		resolver: zodResolver(actionSchema),
 	});
 
-	const recordForm = useForm({
-		resolver: zodResolver(disciplinaryRecordSchema),
-		defaultValues: {
-			Disciplinary_Record_Description: '',
-			Disciplinary_Record_status: '',
-			StudentID: 0,
-			IncidentID: 0,
-		},
+	const recordForm = useForm<
+		z.infer<typeof recordSchema>
+	>({
+		resolver: zodResolver(recordSchema),
 	});
 
-	const adminForm = useForm({
+	const adminForm = useForm<z.infer<typeof adminSchema>>({
 		resolver: zodResolver(adminSchema),
-		defaultValues: {
-			admin_name: '',
-			admin_date: new Date(),
-			admin_location: '',
-			admin_sl: '',
-		},
 	});
 
-	const appealForm = useForm({
+	const appealForm = useForm<
+		z.infer<typeof appealSchema>
+	>({
 		resolver: zodResolver(appealSchema),
-		defaultValues: {
-			appeal_name: '',
-			appeal_reason: '',
-			appeal_status: '',
-		},
 	});
 
 	useEffect(() => {
-		fetchStudents();
-		fetchIncidents();
-		fetchActions();
-		fetchAdmins();
-		fetchAppeals();
-		fetchRecords();
+		fetchData();
 	}, []);
 
-	const fetchStudents = async () => {
+	const fetchData = async () => {
 		try {
-			const response = await axios.get(
-				'http://localhost:5000/api/students',
-			);
-			setStudents(
-				response.data.map((student: any) => ({
-					...student,
-					date_of_birth: new Date(
-						student.date_of_birth,
-					),
-				})),
-			);
+			const [
+				studentsRes,
+				incidentsRes,
+				actionsRes,
+				recordsRes,
+				adminsRes,
+				appealsRes,
+			] = await Promise.all([
+				axios.get(
+					'http://localhost:5000/api/students',
+				),
+				axios.get(
+					'http://localhost:5000/api/incidents',
+				),
+				axios.get(
+					'http://localhost:5000/api/disciplinary-actions',
+				),
+				axios.get(
+					'http://localhost:5000/api/disciplinary-records',
+				),
+				axios.get(
+					'http://localhost:5000/api/admins',
+				),
+				axios.get(
+					'http://localhost:5000/api/appeals',
+				),
+			]);
+
+			setStudents(studentsRes.data);
+			setIncidents(incidentsRes.data);
+			setActions(actionsRes.data);
+			setRecords(recordsRes.data);
+			setAdmins(adminsRes.data);
+			setAppeals(appealsRes.data);
 		} catch (error) {
-			console.error(
-				'Error fetching students:',
-				error,
-			);
+			console.error('Error fetching data:', error);
 			toast({
 				title: 'Error',
-				description: 'Failed to fetch students',
+				description: 'Failed to fetch data',
 				variant: 'destructive',
 			});
 		}
 	};
 
-	const fetchAdmins = async () => {
-		try {
-			const response = await axios.get(
-				'http://localhost:5000/api/admins',
-			);
-			setAdmins(response.data);
-		} catch (error) {
-			console.error('Error fetching admins:', error);
-			toast({
-				title: 'Error',
-				description: 'Failed to fetch admins',
-				variant: 'destructive',
-			});
-		}
-	};
-
-	const fetchAppeals = async () => {
-		try {
-			const response = await axios.get(
-				'http://localhost:5000/api/appeals',
-			);
-			setAppeals(response.data);
-		} catch (error) {
-			console.error('Error fetching Appeals:', error);
-			toast({
-				title: 'Error',
-				description: 'Failed to fetch Appeals',
-				variant: 'destructive',
-			});
-		}
-	};
-
-	const fetchIncidents = async () => {
-		try {
-			const response = await axios.get(
-				'http://localhost:5000/api/incidents',
-			);
-			setIncidents(
-				response.data.map((incident: any) => ({
-					...incident,
-					Incident_date: new Date(
-						incident.Incident_date,
-					),
-				})),
-			);
-		} catch (error) {
-			console.error(
-				'Error fetching incidents:',
-				error,
-			);
-			toast({
-				title: 'Error',
-				description: 'Failed to fetch incidents',
-				variant: 'destructive',
-			});
-		}
-	};
-
-	const fetchActions = async () => {
-		try {
-			const response = await axios.get(
-				'http://localhost:5000/api/disciplinary-actions',
-			);
-			setActions(response.data);
-		} catch (error) {
-			console.error('Error fetching actions:', error);
-			toast({
-				title: 'Error',
-				description:
-					'Failed to fetch disciplinary actions',
-				variant: 'destructive',
-			});
-		}
-	};
-
-	const fetchRecords = async () => {
-		try {
-			const response = await axios.get(
-				'http://localhost:5000/api/disciplinary-records',
-			);
-			setRecords(response.data);
-		} catch (error) {
-			console.error('Error fetching records:', error);
-			toast({
-				title: 'Error',
-				description:
-					'Failed to fetch disciplinary records',
-				variant: 'destructive',
-			});
-		}
-	};
-
-	const onSubmitStudent = async (
-		data: z.infer<typeof studentSchema>,
+	const handleDelete = async (
+		id: string,
+		type: string,
 	) => {
 		try {
-			const formattedData = {
-				...data,
-				date_of_birth: data.date_of_birth
-					.toISOString()
-					.split('T')[0],
-			};
-			await axios.post(
-				'http://localhost:5000/api/students',
-				formattedData,
+			await axios.delete(
+				`http://localhost:5000/api/${type}/${id}`,
 			);
 			toast({
 				title: 'Success',
-				description: 'Student added successfully',
+				description: `${type.charAt(0).toUpperCase() + type.slice(1)} deleted successfully`,
 			});
-			studentForm.reset();
-			fetchStudents();
+			fetchData();
 		} catch (error) {
-			console.error('Error adding student:', error);
+			console.error(`Error deleting ${type}:`, error);
 			toast({
 				title: 'Error',
-				description: 'Failed to add student',
+				description: `Failed to delete ${type}`,
 				variant: 'destructive',
 			});
 		}
 	};
 
-	const onSubmitIncident = async (
-		data: z.infer<typeof incidentSchema>,
+	const handleEdit = (
+		item:
+			| Student
+			| Incident
+			| DisciplinaryAction
+			| DisciplinaryRecord
+			| Admin
+			| Appeal,
+		type: string,
 	) => {
-		try {
-			const formattedData = {
-				...data,
-				Incident_date:
-					data.Incident_date.toISOString().split(
-						'T',
-					)[0],
-			};
-			await axios.post(
-				'http://localhost:5000/api/incidents',
-				formattedData,
-			);
-			toast({
-				title: 'Success',
-				description: 'Incident added successfully',
-			});
-			incidentForm.reset();
-			fetchIncidents();
-		} catch (error) {
-			console.error('Error adding incident:', error);
-			toast({
-				title: 'Error',
-				description: 'Failed to add incident',
-				variant: 'destructive',
-			});
-		}
+		setEditingItem(item);
+		if (type === 'students') studentForm.reset(item);
+		if (type === 'incidents') incidentForm.reset(item);
+		if (type === 'actions') actionForm.reset(item);
+		if (type === 'records') recordForm.reset(item);
+		if (type === 'admins') adminForm.reset(item);
+		if (type === 'appeals') appealForm.reset(item);
 	};
 
-	const onSubmitAction = async (
-		data: z.infer<typeof disciplinaryActionSchema>,
+	const handleUpdate = async (
+		data: any,
+		type: string,
 	) => {
 		try {
-			await axios.post(
-				'http://localhost:5000/api/disciplinary-actions',
+			await axios.put(
+				`http://localhost:5000/api/${type}/${data.id}`,
 				data,
 			);
 			toast({
 				title: 'Success',
-				description:
-					'Disciplinary action added successfully',
+				description: `${type.charAt(0).toUpperCase() + type.slice(1)} updated successfully`,
 			});
-			actionForm.reset();
-			fetchActions();
+			setEditingItem(null);
+			fetchData();
 		} catch (error) {
-			console.error('Error adding action:', error);
+			console.error(`Error updating ${type}:`, error);
 			toast({
 				title: 'Error',
-				description:
-					'Failed to add disciplinary action',
+				description: `Failed to update ${type}`,
 				variant: 'destructive',
 			});
 		}
 	};
 
-	const onSubmitRecord = async (
-		data: z.infer<typeof disciplinaryRecordSchema>,
-	) => {
+	const handleAdd = async (data: any, type: string) => {
 		try {
 			await axios.post(
-				'http://localhost:5000/api/disciplinary-records',
+				`http://localhost:5000/api/${type}`,
 				data,
 			);
 			toast({
 				title: 'Success',
-				description:
-					'Disciplinary Record added successfully',
+				description: `${type.charAt(0).toUpperCase() + type.slice(1)} added successfully`,
 			});
-			recordForm.reset();
-			fetchRecords();
+			setIsAddDialogOpen(false);
+			fetchData();
 		} catch (error) {
-			console.error('Error adding record:', error);
+			console.error(`Error adding ${type}:`, error);
 			toast({
 				title: 'Error',
-				description:
-					'Failed to add disciplinary record',
-				variant: 'destructive',
-			});
-		}
-	};
-
-	const onSubmitAdmin = async (
-		data: z.infer<typeof adminSchema>,
-	) => {
-		try {
-			await axios.post(
-				'http://localhost:5000/api/admins',
-				data,
-			);
-			toast({
-				title: 'Success',
-				description: 'Admin added successfully',
-			});
-			adminForm.reset();
-			fetchAdmins();
-		} catch (error) {
-			console.error('Error adding admin:', error);
-			toast({
-				title: 'Error',
-				description:
-					'Failed to add admin. Please try again.',
-				variant: 'destructive',
-			});
-		}
-	};
-
-	const onSubmitAppeal = async (
-		data: z.infer<typeof appealSchema>,
-	) => {
-		try {
-			await axios.post(
-				'http://localhost:5000/api/appeals',
-				data,
-			);
-			toast({
-				title: 'Success',
-				description: 'Appeal added successfully',
-			});
-			appealForm.reset();
-			fetchAppeals();
-		} catch (error) {
-			console.error('Error adding appeal:', error);
-			toast({
-				title: 'Error',
-				description:
-					'Failed to add appeal. Please try again.',
+				description: `Failed to add ${type}`,
 				variant: 'destructive',
 			});
 		}
@@ -530,7 +383,7 @@ export default function StaffDashboard() {
 	return (
 		<div className="container mx-auto p-6">
 			<h1 className="text-3xl font-bold mb-6">
-				DBA Dashboard
+				Admin Dashboard
 			</h1>
 			<Tabs
 				value={activeTab}
@@ -557,724 +410,1212 @@ export default function StaffDashboard() {
 					</TabsTrigger>
 				</TabsList>
 
-				<TabsContent value="students">
-					<Card>
-						<CardHeader>
-							<CardTitle>
-								Add Student
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<form
-								onSubmit={studentForm.handleSubmit(
-									onSubmitStudent,
-								)}
-								className="space-y-4"
-							>
-								<Input
-									{...studentForm.register(
-										'first_name',
-									)}
-									placeholder="First Name"
-								/>
-								<Input
-									{...studentForm.register(
-										'last_name',
-									)}
-									placeholder="Last Name"
-								/>
-								<Input
-									{...studentForm.register(
-										'date_of_birth',
-										{
-											valueAsDate:
+				{[
+					'students',
+					'incidents',
+					'actions',
+					'records',
+					'admins',
+					'appeals',
+				].map((tab) => (
+					<TabsContent key={tab} value={tab}>
+						<Card>
+							<CardHeader>
+								<CardTitle className="flex justify-between items-center">
+									<span>
+										{tab
+											.charAt(0)
+											.toUpperCase() +
+											tab.slice(
+												1,
+											)}{' '}
+										List
+									</span>
+									<Button
+										onClick={() =>
+											setIsAddDialogOpen(
 												true,
-										},
-									)}
-									type="date"
-									placeholder="Date of Birth"
-								/>
-								<Input
-									{...studentForm.register(
-										'email',
-									)}
-									type="email"
-									placeholder="Email"
-								/>
-								<Input
-									{...studentForm.register(
-										'parent_no',
-									)}
-									placeholder="Parent Number"
-								/>
-								<Button
-									type="submit"
-									className="w-full"
-								>
-									Add Student
-								</Button>
-							</form>
-						</CardContent>
-					</Card>
-
-					<Card className="mt-6">
-						<CardHeader>
-							<CardTitle>
-								Students List
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<Table>
-								<TableHeader>
-									<TableRow>
-										<TableHead>
-											ID
-										</TableHead>
-										<TableHead>
-											Name
-										</TableHead>
-										<TableHead>
-											Date of Birth
-										</TableHead>
-										<TableHead>
-											Email
-										</TableHead>
-										<TableHead>
-											Parent Number
-										</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{students.map(
-										(student) => (
-											<TableRow
-												key={
-													student.StudentID
-												}
-											>
-												<TableCell>
-													{
-														student.StudentID
-													}
-												</TableCell>
-												<TableCell>{`${student.first_name} ${student.last_name}`}</TableCell>
-												<TableCell>
-													{student.date_of_birth
-														.toLocaleDateString(
-															'en-GB',
-															{
-																day: '2-digit',
-																month: 'short',
-																year: 'numeric',
-															},
-														)
-														.replace(
-															/ /g,
-															'-',
-														)}
-												</TableCell>
-												<TableCell>
-													{
-														student.email
-													}
-												</TableCell>
-												<TableCell>
-													{
-														student.parent_no
-													}
-												</TableCell>
-											</TableRow>
-										),
-									)}
-								</TableBody>
-							</Table>
-						</CardContent>
-					</Card>
-				</TabsContent>
-
-				<TabsContent value="incidents">
-					<Card>
-						<CardHeader>
-							<CardTitle>
-								Add Incident
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<form
-								onSubmit={incidentForm.handleSubmit(
-									onSubmitIncident,
-								)}
-								className="space-y-4"
-							>
-								<Input
-									{...incidentForm.register(
-										'Incident_name',
-									)}
-									placeholder="Incident Name"
-								/>
-								<Input
-									{...incidentForm.register(
-										'Incident_date',
-										{
-											valueAsDate:
-												true,
-										},
-									)}
-									type="date"
-									placeholder="Incident Date"
-								/>
-								<Input
-									{...incidentForm.register(
-										'Incident_location',
-									)}
-									placeholder="Incident Location"
-								/>
-								<Input
-									{...incidentForm.register(
-										'Incident_sl',
-									)}
-									placeholder="Severity Level"
-								/>
-								<Button
-									type="submit"
-									className="w-full"
-								>
-									Add Incident
-								</Button>
-							</form>
-						</CardContent>
-					</Card>
-
-					<Card className="mt-6">
-						<CardHeader>
-							<CardTitle>
-								Incidents List
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<Table>
-								<TableHeader>
-									<TableRow>
-										<TableHead>
-											ID
-										</TableHead>
-										<TableHead>
-											Name
-										</TableHead>
-										<TableHead>
-											Date
-										</TableHead>
-										<TableHead>
-											Location
-										</TableHead>
-										<TableHead>
-											Severity Level
-										</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{incidents.map(
-										(incident) => (
-											<TableRow
-												key={
-													incident.IncidentID
-												}
-											>
-												<TableCell>
-													{
-														incident.IncidentID
-													}
-												</TableCell>
-												<TableCell>
-													{
-														incident.Incident_name
-													}
-												</TableCell>
-												<TableCell>
-													{incident.Incident_date.toLocaleDateString(
-														'en-GB',
-														{
-															day: '2-digit',
-															month: 'short',
-															year: 'numeric',
-														},
-													).replace(
-														/ /g,
-														'-',
-													)}
-												</TableCell>
-												<TableCell>
-													{
-														incident.Incident_location
-													}
-												</TableCell>
-												<TableCell>
-													{
-														incident.Incident_sl
-													}
-												</TableCell>
-											</TableRow>
-										),
-									)}
-								</TableBody>
-							</Table>
-						</CardContent>
-					</Card>
-				</TabsContent>
-
-				<TabsContent value="actions">
-					<Card>
-						<CardHeader>
-							<CardTitle>
-								Add Disciplinary Action
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<form
-								onSubmit={actionForm.handleSubmit(
-									onSubmitAction,
-								)}
-								className="space-y-4"
-							>
-								<Input
-									{...actionForm.register(
-										'Disciplinary_Incident_Type',
-									)}
-									placeholder="Incident Type"
-								/>
-								<Textarea
-									{...actionForm.register(
-										'Disciplinary_action_Taken',
-									)}
-									placeholder="Action Taken"
-								/>
-								<Input
-									{...actionForm.register(
-										'Disciplinary_Terms',
-									)}
-									placeholder="Terms"
-								/>
-								<Button
-									type="submit"
-									className="w-full"
-								>
-									Add Action
-								</Button>
-							</form>
-						</CardContent>
-					</Card>
-
-					<Card className="mt-6">
-						<CardHeader>
-							<CardTitle>
-								Disciplinary Actions List
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<Table>
-								<TableHeader>
-									<TableRow>
-										<TableHead>
-											ID
-										</TableHead>
-										<TableHead>
-											Incident Type
-										</TableHead>
-										<TableHead>
-											Action Taken
-										</TableHead>
-										<TableHead>
-											Terms
-										</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{actions.map(
-										(action) => (
-											<TableRow
-												key={
-													action.DisrActionID
-												}
-											>
-												<TableCell>
-													{
-														action.DisrActionID
-													}
-												</TableCell>
-												<TableCell>
-													{
-														action.Disciplinary_Incident_Type
-													}
-												</TableCell>
-												<TableCell>
-													{
-														action.Disciplinary_action_Taken
-													}
-												</TableCell>
-												<TableCell>
-													{
-														action.Disciplinary_Terms
-													}
-												</TableCell>
-											</TableRow>
-										),
-									)}
-								</TableBody>
-							</Table>
-						</CardContent>
-					</Card>
-				</TabsContent>
-
-				<TabsContent value="records">
-					<Card>
-						<CardHeader>
-							<CardTitle>
-								Add Disciplinary Records
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<form
-								onSubmit={recordForm.handleSubmit(
-									onSubmitRecord,
-								)}
-								className="space-y-4"
-							>
-								<Input
-									{...recordForm.register(
-										'Disciplinary_Record_Description',
-									)}
-									placeholder="Record Description"
-								/>
-								<Textarea
-									{...recordForm.register(
-										'Disciplinary_Record_status',
-									)}
-									placeholder="Status"
-								/>
-								<Input
-									{...recordForm.register(
-										'StudentID',
-									)}
-									placeholder="Student ID"
-								/>
-								<Input
-									{...recordForm.register(
-										'IncidentID',
-									)}
-									placeholder="Incident ID"
-								/>
-								<Button
-									type="submit"
-									className="w-full"
-								>
-									Add Record
-								</Button>
-							</form>
-						</CardContent>
-					</Card>
-
-					<Card className="mt-6">
-						<CardHeader>
-							<CardTitle>
-								Disciplinary Records List
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<Table>
-								<TableHeader>
-									<TableRow>
-										<TableHead>
-											ID
-										</TableHead>
-										<TableHead>
-											Description
-										</TableHead>
-										<TableHead>
-											Status
-										</TableHead>
-										<TableHead>
-											Student ID
-										</TableHead>
-										<TableHead>
-											Incident ID
-										</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{records.map(
-										(record) => (
-											<TableRow
-												key={
-													record.recordID
-												}
-											>
-												<TableCell>
-													{
-														record.recordID
-													}
-												</TableCell>
-												<TableCell>
-													{
-														record.Disciplinary_Record_Description
-													}
-												</TableCell>
-												<TableCell>
-													{
-														record.Disciplinary_Record_status
-													}
-												</TableCell>
-												<TableCell>
-													{
-														record.StudentID
-													}
-												</TableCell>
-												<TableCell>
-													{
-														record.IncidentID
-													}
-												</TableCell>
-											</TableRow>
-										),
-									)}
-								</TableBody>
-							</Table>
-						</CardContent>
-					</Card>
-				</TabsContent>
-
-				<TabsContent value="admins">
-					<Card>
-						<CardHeader>
-							<CardTitle>Add Admin</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<form
-								onSubmit={adminForm.handleSubmit(
-									onSubmitAdmin,
-								)}
-								className="space-y-4"
-							>
-								<Input
-									{...adminForm.register(
-										'admin_name',
-									)}
-									placeholder="Name of Admin"
-								/>
-								<Input
-									{...adminForm.register(
-										'admin_date',
-										{
-											valueAsDate:
-												true,
-										},
-									)}
-									type="date"
-									placeholder="Admin's Register Date"
-								/>
-								<Input
-									{...adminForm.register(
-										'admin_location',
-									)}
-									placeholder="Admin's Location"
-								/>
-								<Input
-									{...adminForm.register(
-										'admin_sl',
-									)}
-									placeholder="Admin's Severity Level"
-								/>
-								<Button
-									type="submit"
-									className="w-full"
-								>
-									Add Admin
-								</Button>
-							</form>
-						</CardContent>
-					</Card>
-
-					<Card className="mt-6">
-						<CardHeader>
-							<CardTitle>
-								Admins List
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<Table>
-								<TableHeader>
-									<TableRow>
-										<TableHead>
-											ID
-										</TableHead>
-										<TableHead>
-											Name
-										</TableHead>
-										<TableHead>
-											Register Date
-										</TableHead>
-										<TableHead>
-											Location
-										</TableHead>
-										<TableHead>
-											Severity Level
-										</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{admins.map((admin) => (
-										<TableRow
-											key={
-												admin.AdminID
-											}
-										>
-											<TableCell>
-												{
-													admin.AdminID
-												}
-											</TableCell>
-											<TableCell>
-												{
-													admin.Admin_name
-												}
-											</TableCell>
-											<TableCell>
-												{new Date(
-													admin.Admin_date,
-												)
-													.toLocaleDateString(
-														'en-GB',
-														{
-															day: '2-digit',
-															month: 'short',
-															year: 'numeric',
-														},
-													)
-													.replace(
-														/ /g,
-														'-',
-													)}
-											</TableCell>
-											<TableCell>
-												{
-													admin.Admin_location
-												}
-											</TableCell>
-											<TableCell>
-												{
-													admin.Admin_sl
-												}
-											</TableCell>
+											)
+										}
+									>
+										Add{' '}
+										{tab.slice(0, -1)}
+									</Button>
+								</CardTitle>
+							</CardHeader>
+							<CardContent>
+								<Table>
+									<TableHeader>
+										<TableRow>
+											{tab ===
+												'students' && (
+												<>
+													<TableHead>
+														ID
+													</TableHead>
+													<TableHead>
+														Name
+													</TableHead>
+													<TableHead>
+														Date
+														of
+														Birth
+													</TableHead>
+													<TableHead>
+														Email
+													</TableHead>
+													<TableHead>
+														Parent
+														Number
+													</TableHead>
+												</>
+											)}
+											{tab ===
+												'incidents' && (
+												<>
+													<TableHead>
+														ID
+													</TableHead>
+													<TableHead>
+														Name
+													</TableHead>
+													<TableHead>
+														Date
+													</TableHead>
+													<TableHead>
+														Location
+													</TableHead>
+													<TableHead>
+														Severity
+														Level
+													</TableHead>
+												</>
+											)}
+											{tab ===
+												'actions' && (
+												<>
+													<TableHead>
+														ID
+													</TableHead>
+													<TableHead>
+														Incident
+														Type
+													</TableHead>
+													<TableHead>
+														Action
+														Taken
+													</TableHead>
+													<TableHead>
+														Terms
+													</TableHead>
+												</>
+											)}
+											{tab ===
+												'records' && (
+												<>
+													<TableHead>
+														ID
+													</TableHead>
+													<TableHead>
+														Description
+													</TableHead>
+													<TableHead>
+														Status
+													</TableHead>
+													<TableHead>
+														Student
+														ID
+													</TableHead>
+													<TableHead>
+														Incident
+														ID
+													</TableHead>
+												</>
+											)}
+											{tab ===
+												'admins' && (
+												<>
+													<TableHead>
+														ID
+													</TableHead>
+													<TableHead>
+														Name
+													</TableHead>
+													<TableHead>
+														Date
+													</TableHead>
+													<TableHead>
+														Location
+													</TableHead>
+													<TableHead>
+														Security
+														Level
+													</TableHead>
+												</>
+											)}
+											{tab ===
+												'appeals' && (
+												<>
+													<TableHead>
+														ID
+													</TableHead>
+													<TableHead>
+														Name
+													</TableHead>
+													<TableHead>
+														Reason
+													</TableHead>
+													<TableHead>
+														Status
+													</TableHead>
+												</>
+											)}
+											<TableHead>
+												Actions
+											</TableHead>
 										</TableRow>
-									))}
-								</TableBody>
-							</Table>
-						</CardContent>
-					</Card>
-				</TabsContent>
-
-				<TabsContent value="appeals">
-					<Card>
-						<CardHeader>
-							<CardTitle>
-								Add Appeal
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<form
-								onSubmit={appealForm.handleSubmit(
-									onSubmitAppeal,
-								)}
-								className="space-y-4"
-							>
-								<Input
-									{...appealForm.register(
-										'appeal_name',
-									)}
-									placeholder="Name of Appeal"
-								/>
-								<Input
-									{...appealForm.register(
-										'appeal_reason',
-									)}
-									placeholder="Reason of Appeal"
-								/>
-								<Input
-									{...appealForm.register(
-										'appeal_status',
-									)}
-									placeholder="Appeal's Status"
-								/>
-								<Button
-									type="submit"
-									className="w-full"
-								>
-									Add Appeal
-								</Button>
-							</form>
-						</CardContent>
-					</Card>
-
-					<Card className="mt-6">
-						<CardHeader>
-							<CardTitle>
-								Appeals List
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<Table>
-								<TableHeader>
-									<TableRow>
-										<TableHead>
-											ID
-										</TableHead>
-										<TableHead>
-											Name
-										</TableHead>
-										<TableHead>
-											Reason
-										</TableHead>
-										<TableHead>
-											Status
-										</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{appeals.map(
-										(appeal) => (
-											<TableRow
-												key={
-													appeal.AppealID
-												}
-											>
-												<TableCell>
-													{
-														appeal.AppealID
-													}
-												</TableCell>
-												<TableCell>
-													{
-														appeal.Appeal_name
-													}
-												</TableCell>
-												<TableCell>
-													{
-														appeal.Appeal_reason
-													}
-												</TableCell>
-												<TableCell>
-													{
-														appeal.Appeal_Status
-													}
-												</TableCell>
-											</TableRow>
-										),
-									)}
-								</TableBody>
-							</Table>
-						</CardContent>
-					</Card>
-				</TabsContent>
+									</TableHeader>
+									<TableBody>
+										{tab ===
+											'students' &&
+											students.map(
+												(
+													student,
+												) => (
+													<TableRow
+														key={
+															student.id
+														}
+													>
+														<TableCell>
+															{
+																student.id
+															}
+														</TableCell>
+														<TableCell>{`${student.first_name} ${student.last_name}`}</TableCell>
+														<TableCell>
+															{
+																student.date_of_birth
+															}
+														</TableCell>
+														<TableCell>
+															{
+																student.email
+															}
+														</TableCell>
+														<TableCell>
+															{
+																student.parent_no
+															}
+														</TableCell>
+														<TableCell>
+															<Button
+																onClick={() =>
+																	handleEdit(
+																		student,
+																		'students',
+																	)
+																}
+																className="mr-2"
+															>
+																Edit
+															</Button>
+															<Button
+																onClick={() =>
+																	handleDelete(
+																		student.id,
+																		'students',
+																	)
+																}
+																variant="destructive"
+															>
+																Delete
+															</Button>
+														</TableCell>
+													</TableRow>
+												),
+											)}
+										{tab ===
+											'incidents' &&
+											incidents.map(
+												(
+													incident,
+												) => (
+													<TableRow
+														key={
+															incident.id
+														}
+													>
+														<TableCell>
+															{
+																incident.id
+															}
+														</TableCell>
+														<TableCell>
+															{
+																incident.Incident_name
+															}
+														</TableCell>
+														<TableCell>
+															{
+																incident.Incident_date
+															}
+														</TableCell>
+														<TableCell>
+															{
+																incident.Incident_location
+															}
+														</TableCell>
+														<TableCell>
+															{
+																incident.Incident_sl
+															}
+														</TableCell>
+														<TableCell>
+															<Button
+																onClick={() =>
+																	handleEdit(
+																		incident,
+																		'incidents',
+																	)
+																}
+																className="mr-2"
+															>
+																Edit
+															</Button>
+															<Button
+																onClick={() =>
+																	handleDelete(
+																		incident.id,
+																		'incidents',
+																	)
+																}
+																variant="destructive"
+															>
+																Delete
+															</Button>
+														</TableCell>
+													</TableRow>
+												),
+											)}
+										{tab ===
+											'actions' &&
+											actions.map(
+												(
+													action,
+												) => (
+													<TableRow
+														key={
+															action.id
+														}
+													>
+														<TableCell>
+															{
+																action.id
+															}
+														</TableCell>
+														<TableCell>
+															{
+																action.Disciplinary_Incident_Type
+															}
+														</TableCell>
+														<TableCell>
+															{
+																action.Disciplinary_action_Taken
+															}
+														</TableCell>
+														<TableCell>
+															{
+																action.Disciplinary_Terms
+															}
+														</TableCell>
+														<TableCell>
+															<Button
+																onClick={() =>
+																	handleEdit(
+																		action,
+																		'actions',
+																	)
+																}
+																className="mr-2"
+															>
+																Edit
+															</Button>
+															<Button
+																onClick={() =>
+																	handleDelete(
+																		action.id,
+																		'actions',
+																	)
+																}
+																variant="destructive"
+															>
+																Delete
+															</Button>
+														</TableCell>
+													</TableRow>
+												),
+											)}
+										{tab ===
+											'records' &&
+											records.map(
+												(
+													record,
+												) => (
+													<TableRow
+														key={
+															record.id
+														}
+													>
+														<TableCell>
+															{
+																record.id
+															}
+														</TableCell>
+														<TableCell>
+															{
+																record.Disciplinary_Record_Description
+															}
+														</TableCell>
+														<TableCell>
+															{
+																record.Disciplinary_Record_status
+															}
+														</TableCell>
+														<TableCell>
+															<Popover>
+																<PopoverTrigger>
+																	{
+																		record.StudentID
+																	}
+																</PopoverTrigger>
+																<PopoverContent>
+																	{
+																		students.find(
+																			(
+																				s,
+																			) =>
+																				s.id ===
+																				record.StudentID,
+																		)
+																			?.first_name
+																	}{' '}
+																	{
+																		students.find(
+																			(
+																				s,
+																			) =>
+																				s.id ===
+																				record.StudentID,
+																		)
+																			?.last_name
+																	}
+																</PopoverContent>
+															</Popover>
+														</TableCell>
+														<TableCell>
+															<Popover>
+																<PopoverTrigger>
+																	{
+																		record.IncidentID
+																	}
+																</PopoverTrigger>
+																<PopoverContent>
+																	{
+																		incidents.find(
+																			(
+																				i,
+																			) =>
+																				i.id ===
+																				record.IncidentID,
+																		)
+																			?.Incident_name
+																	}
+																</PopoverContent>
+															</Popover>
+														</TableCell>
+														<TableCell>
+															<Button
+																onClick={() =>
+																	handleEdit(
+																		record,
+																		'records',
+																	)
+																}
+																className="mr-2"
+															>
+																Edit
+															</Button>
+															<Button
+																onClick={() =>
+																	handleDelete(
+																		record.id,
+																		'records',
+																	)
+																}
+																variant="destructive"
+															>
+																Delete
+															</Button>
+														</TableCell>
+													</TableRow>
+												),
+											)}
+										{tab === 'admins' &&
+											admins.map(
+												(admin) => (
+													<TableRow
+														key={
+															admin.id
+														}
+													>
+														<TableCell>
+															{
+																admin.id
+															}
+														</TableCell>
+														<TableCell>
+															{
+																admin.Admin_name
+															}
+														</TableCell>
+														<TableCell>
+															{
+																admin.Admin_date
+															}
+														</TableCell>
+														<TableCell>
+															{
+																admin.Admin_location
+															}
+														</TableCell>
+														<TableCell>
+															{
+																admin.Admin_sl
+															}
+														</TableCell>
+														<TableCell>
+															<Button
+																onClick={() =>
+																	handleEdit(
+																		admin,
+																		'admins',
+																	)
+																}
+																className="mr-2"
+															>
+																Edit
+															</Button>
+															<Button
+																onClick={() =>
+																	handleDelete(
+																		admin.id,
+																		'admins',
+																	)
+																}
+																variant="destructive"
+															>
+																Delete
+															</Button>
+														</TableCell>
+													</TableRow>
+												),
+											)}
+										{tab ===
+											'appeals' &&
+											appeals.map(
+												(
+													appeal,
+												) => (
+													<TableRow
+														key={
+															appeal.id
+														}
+													>
+														<TableCell>
+															{
+																appeal.id
+															}
+														</TableCell>
+														<TableCell>
+															{
+																appeal.Appeal_name
+															}
+														</TableCell>
+														<TableCell>
+															{
+																appeal.Appeal_reason
+															}
+														</TableCell>
+														<TableCell>
+															{
+																appeal.Appeal_Status
+															}
+														</TableCell>
+														<TableCell>
+															<Button
+																onClick={() =>
+																	handleEdit(
+																		appeal,
+																		'appeals',
+																	)
+																}
+																className="mr-2"
+															>
+																Edit
+															</Button>
+															<Button
+																onClick={() =>
+																	handleDelete(
+																		appeal.id,
+																		'appeals',
+																	)
+																}
+																variant="destructive"
+															>
+																Delete
+															</Button>
+														</TableCell>
+													</TableRow>
+												),
+											)}
+									</TableBody>
+								</Table>
+							</CardContent>
+						</Card>
+					</TabsContent>
+				))}
 			</Tabs>
+
+			{/* Edit Dialog */}
+			<Dialog
+				open={!!editingItem}
+				onOpenChange={() => setEditingItem(null)}
+			>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>
+							Edit {activeTab.slice(0, -1)}
+						</DialogTitle>
+					</DialogHeader>
+					{activeTab === 'students' && (
+						<form
+							onSubmit={studentForm.handleSubmit(
+								(data) =>
+									handleUpdate(
+										data,
+										'students',
+									),
+							)}
+							className="space-y-4"
+						>
+							<Input
+								{...studentForm.register(
+									'first_name',
+								)}
+								placeholder="First Name"
+							/>
+							<Input
+								{...studentForm.register(
+									'last_name',
+								)}
+								placeholder="Last Name"
+							/>
+							<Input
+								{...studentForm.register(
+									'date_of_birth',
+								)}
+								type="date"
+								placeholder="Date of Birth"
+							/>
+							<Input
+								{...studentForm.register(
+									'email',
+								)}
+								type="email"
+								placeholder="Email"
+							/>
+							<Input
+								{...studentForm.register(
+									'parent_no',
+								)}
+								placeholder="Parent Number"
+							/>
+							<Button type="submit">
+								Update Student
+							</Button>
+						</form>
+					)}
+					{activeTab === 'incidents' && (
+						<form
+							onSubmit={incidentForm.handleSubmit(
+								(data) =>
+									handleUpdate(
+										data,
+										'incidents',
+									),
+							)}
+							className="space-y-4"
+						>
+							<Input
+								{...incidentForm.register(
+									'Incident_name',
+								)}
+								placeholder="Incident Name"
+							/>
+							<Input
+								{...incidentForm.register(
+									'Incident_date',
+								)}
+								type="date"
+								placeholder="Incident Date"
+							/>
+							<Input
+								{...incidentForm.register(
+									'Incident_location',
+								)}
+								placeholder="Incident Location"
+							/>
+							<Input
+								{...incidentForm.register(
+									'Incident_sl',
+								)}
+								placeholder="Severity Level"
+							/>
+							<Button type="submit">
+								Update Incident
+							</Button>
+						</form>
+					)}
+					{activeTab === 'actions' && (
+						<form
+							onSubmit={actionForm.handleSubmit(
+								(data) =>
+									handleUpdate(
+										data,
+										'actions',
+									),
+							)}
+							className="space-y-4"
+						>
+							<Input
+								{...actionForm.register(
+									'Disciplinary_Incident_Type',
+								)}
+								placeholder="Incident Type"
+							/>
+							<Input
+								{...actionForm.register(
+									'Disciplinary_action_Taken',
+								)}
+								placeholder="Action Taken"
+							/>
+							<Textarea
+								{...actionForm.register(
+									'Disciplinary_Terms',
+								)}
+								placeholder="Terms"
+							/>
+							<Button type="submit">
+								Update Action
+							</Button>
+						</form>
+					)}
+					{activeTab === 'records' && (
+						<form
+							onSubmit={recordForm.handleSubmit(
+								(data) =>
+									handleUpdate(
+										data,
+										'records',
+									),
+							)}
+							className="space-y-4"
+						>
+							<Textarea
+								{...recordForm.register(
+									'Disciplinary_Record_Description',
+								)}
+								placeholder="Description"
+							/>
+							<Input
+								{...recordForm.register(
+									'Disciplinary_Record_status',
+								)}
+								placeholder="Status"
+							/>
+							<Controller
+								name="StudentID"
+								control={recordForm.control}
+								render={({ field }) => (
+									<Select
+										onValueChange={
+											field.onChange
+										}
+										value={field.value}
+									>
+										<SelectTrigger>
+											<SelectValue placeholder="Select Student" />
+										</SelectTrigger>
+										<SelectContent>
+											{students.map(
+												(
+													student,
+												) => (
+													<SelectItem
+														key={
+															student.id
+														}
+														value={
+															student.id
+														}
+													>
+														{
+															student.first_name
+														}{' '}
+														{
+															student.last_name
+														}
+													</SelectItem>
+												),
+											)}
+										</SelectContent>
+									</Select>
+								)}
+							/>
+							<Controller
+								name="IncidentID"
+								control={recordForm.control}
+								render={({ field }) => (
+									<Select
+										onValueChange={
+											field.onChange
+										}
+										value={field.value}
+									>
+										<SelectTrigger>
+											<SelectValue placeholder="Select Incident" />
+										</SelectTrigger>
+										<SelectContent>
+											{incidents.map(
+												(
+													incident,
+												) => (
+													<SelectItem
+														key={
+															incident.id
+														}
+														value={
+															incident.id
+														}
+													>
+														{
+															incident.Incident_name
+														}
+													</SelectItem>
+												),
+											)}
+										</SelectContent>
+									</Select>
+								)}
+							/>
+							<Button type="submit">
+								Update Record
+							</Button>
+						</form>
+					)}
+					{activeTab === 'admins' && (
+						<form
+							onSubmit={adminForm.handleSubmit(
+								(data) =>
+									handleUpdate(
+										data,
+										'admins',
+									),
+							)}
+							className="space-y-4"
+						>
+							<Input
+								{...adminForm.register(
+									'Admin_name',
+								)}
+								placeholder="Admin Name"
+							/>
+							<Input
+								{...adminForm.register(
+									'Admin_date',
+								)}
+								type="date"
+								placeholder="Date"
+							/>
+							<Input
+								{...adminForm.register(
+									'Admin_location',
+								)}
+								placeholder="Location"
+							/>
+							<Input
+								{...adminForm.register(
+									'Admin_sl',
+								)}
+								placeholder="Security Level"
+							/>
+							<Button type="submit">
+								Update Admin
+							</Button>
+						</form>
+					)}
+					{activeTab === 'appeals' && (
+						<form
+							onSubmit={appealForm.handleSubmit(
+								(data) =>
+									handleUpdate(
+										data,
+										'appeals',
+									),
+							)}
+							className="space-y-4"
+						>
+							<Input
+								{...appealForm.register(
+									'Appeal_name',
+								)}
+								placeholder="Appeal Name"
+							/>
+							<Textarea
+								{...appealForm.register(
+									'Appeal_reason',
+								)}
+								placeholder="Appeal Reason"
+							/>
+							<Input
+								{...appealForm.register(
+									'Appeal_Status',
+								)}
+								placeholder="Appeal Status"
+							/>
+							<Button type="submit">
+								Update Appeal
+							</Button>
+						</form>
+					)}
+				</DialogContent>
+			</Dialog>
+
+			{/* Add Dialog */}
+			<Dialog
+				open={isAddDialogOpen}
+				onOpenChange={setIsAddDialogOpen}
+			>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>
+							Add {activeTab.slice(0, -1)}
+						</DialogTitle>
+					</DialogHeader>
+					{activeTab === 'students' && (
+						<form
+							onSubmit={studentForm.handleSubmit(
+								(data) =>
+									handleAdd(
+										data,
+										'students',
+									),
+							)}
+							className="space-y-4"
+						>
+							<Input
+								{...studentForm.register(
+									'first_name',
+								)}
+								placeholder="First Name"
+							/>
+							<Input
+								{...studentForm.register(
+									'last_name',
+								)}
+								placeholder="Last Name"
+							/>
+							<Input
+								{...studentForm.register(
+									'date_of_birth',
+								)}
+								type="date"
+								placeholder="Date of Birth"
+							/>
+							<Input
+								{...studentForm.register(
+									'email',
+								)}
+								type="email"
+								placeholder="Email"
+							/>
+							<Input
+								{...studentForm.register(
+									'parent_no',
+								)}
+								placeholder="Parent Number"
+							/>
+							<Button type="submit">
+								Add Student
+							</Button>
+						</form>
+					)}
+					{activeTab === 'incidents' && (
+						<form
+							onSubmit={incidentForm.handleSubmit(
+								(data) =>
+									handleAdd(
+										data,
+										'incidents',
+									),
+							)}
+							className="space-y-4"
+						>
+							<Input
+								{...incidentForm.register(
+									'Incident_name',
+								)}
+								placeholder="Incident Name"
+							/>
+							<Input
+								{...incidentForm.register(
+									'Incident_date',
+								)}
+								type="date"
+								placeholder="Incident Date"
+							/>
+							<Input
+								{...incidentForm.register(
+									'Incident_location',
+								)}
+								placeholder="Incident Location"
+							/>
+							<Input
+								{...incidentForm.register(
+									'Incident_sl',
+								)}
+								placeholder="Severity Level"
+							/>
+							<Button type="submit">
+								Add Incident
+							</Button>
+						</form>
+					)}
+					{activeTab === 'actions' && (
+						<form
+							onSubmit={actionForm.handleSubmit(
+								(data) =>
+									handleAdd(
+										data,
+										'actions',
+									),
+							)}
+							className="space-y-4"
+						>
+							<Input
+								{...actionForm.register(
+									'Disciplinary_Incident_Type',
+								)}
+								placeholder="Incident Type"
+							/>
+							<Input
+								{...actionForm.register(
+									'Disciplinary_action_Taken',
+								)}
+								placeholder="Action Taken"
+							/>
+							<Textarea
+								{...actionForm.register(
+									'Disciplinary_Terms',
+								)}
+								placeholder="Terms"
+							/>
+							<Button type="submit">
+								Add Action
+							</Button>
+						</form>
+					)}
+					{activeTab === 'records' && (
+						<form
+							onSubmit={recordForm.handleSubmit(
+								(data) =>
+									handleAdd(
+										data,
+										'records',
+									),
+							)}
+							className="space-y-4"
+						>
+							<Textarea
+								{...recordForm.register(
+									'Disciplinary_Record_Description',
+								)}
+								placeholder="Description"
+							/>
+							<Input
+								{...recordForm.register(
+									'Disciplinary_Record_status',
+								)}
+								placeholder="Status"
+							/>
+							<Controller
+								name="StudentID"
+								control={recordForm.control}
+								render={({ field }) => (
+									<Select
+										onValueChange={
+											field.onChange
+										}
+										value={field.value}
+									>
+										<SelectTrigger>
+											<SelectValue placeholder="Select Student" />
+										</SelectTrigger>
+										<SelectContent>
+											{students.map(
+												(
+													student,
+												) => (
+													<SelectItem
+														key={
+															student.id
+														}
+														value={
+															student.id
+														}
+													>
+														{
+															student.first_name
+														}{' '}
+														{
+															student.last_name
+														}
+													</SelectItem>
+												),
+											)}
+										</SelectContent>
+									</Select>
+								)}
+							/>
+							<Controller
+								name="IncidentID"
+								control={recordForm.control}
+								render={({ field }) => (
+									<Select
+										onValueChange={
+											field.onChange
+										}
+										value={field.value}
+									>
+										<SelectTrigger>
+											<SelectValue placeholder="Select Incident" />
+										</SelectTrigger>
+										<SelectContent>
+											{incidents.map(
+												(
+													incident,
+												) => (
+													<SelectItem
+														key={
+															incident.id
+														}
+														value={
+															incident.id
+														}
+													>
+														{
+															incident.Incident_name
+														}
+													</SelectItem>
+												),
+											)}
+										</SelectContent>
+									</Select>
+								)}
+							/>
+							<Button type="submit">
+								Add Record
+							</Button>
+						</form>
+					)}
+					{activeTab === 'admins' && (
+						<form
+							onSubmit={adminForm.handleSubmit(
+								(data) =>
+									handleAdd(
+										data,
+										'admins',
+									),
+							)}
+							className="space-y-4"
+						>
+							<Input
+								{...adminForm.register(
+									'Admin_name',
+								)}
+								placeholder="Admin Name"
+							/>
+							<Input
+								{...adminForm.register(
+									'Admin_date',
+								)}
+								type="date"
+								placeholder="Date"
+							/>
+							<Input
+								{...adminForm.register(
+									'Admin_location',
+								)}
+								placeholder="Location"
+							/>
+							<Input
+								{...adminForm.register(
+									'Admin_sl',
+								)}
+								placeholder="Security Level"
+							/>
+							<Button type="submit">
+								Add Admin
+							</Button>
+						</form>
+					)}
+					{activeTab === 'appeals' && (
+						<form
+							onSubmit={appealForm.handleSubmit(
+								(data) =>
+									handleAdd(
+										data,
+										'appeals',
+									),
+							)}
+							className="space-y-4"
+						>
+							<Input
+								{...appealForm.register(
+									'Appeal_name',
+								)}
+								placeholder="Appeal Name"
+							/>
+							<Textarea
+								{...appealForm.register(
+									'Appeal_reason',
+								)}
+								placeholder="Appeal Reason"
+							/>
+							<Input
+								{...appealForm.register(
+									'Appeal_Status',
+								)}
+								placeholder="Appeal Status"
+							/>
+							<Button type="submit">
+								Add Appeal
+							</Button>
+						</form>
+					)}
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }
