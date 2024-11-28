@@ -195,17 +195,13 @@ export default function AdminDashboard() {
 	const [admins, setAdmins] = useState<Admin[]>([]);
 	const [appeals, setAppeals] = useState<Appeal[]>([]);
 	const [activeTab, setActiveTab] = useState('students');
-	const [editingItem, setEditingItem] = useState<
-		| Student
-		| Incident
-		| DisciplinaryAction
-		| DisciplinaryRecord
-		| Admin
-		| Appeal
-		| null
+	const [isDialogOpen, setIsDialogOpen] = useState(false);
+	const [dialogMode, setDialogMode] = useState<
+		'add' | 'edit'
+	>('add');
+	const [editingItemId, setEditingItemId] = useState<
+		string | null
 	>(null);
-	const [isAddDialogOpen, setIsAddDialogOpen] =
-		useState(false);
 
 	const studentForm = useForm<
 		z.infer<typeof studentSchema>
@@ -314,69 +310,397 @@ export default function AdminDashboard() {
 		}
 	};
 
-	const handleEdit = (
-		item:
-			| Student
-			| Incident
-			| DisciplinaryAction
-			| DisciplinaryRecord
-			| Admin
-			| Appeal,
-		type: string,
-	) => {
-		setEditingItem(item);
-		if (type === 'students') studentForm.reset(item);
-		if (type === 'incidents') incidentForm.reset(item);
-		if (type === 'actions') actionForm.reset(item);
-		if (type === 'records') recordForm.reset(item);
-		if (type === 'admins') adminForm.reset(item);
-		if (type === 'appeals') appealForm.reset(item);
+	const handleEdit = (item: any, type: string) => {
+		setDialogMode('edit');
+		setEditingItemId(item.id);
+		setIsDialogOpen(true);
+
+		switch (type) {
+			case 'students':
+				studentForm.reset(item);
+				break;
+			case 'incidents':
+				incidentForm.reset(item);
+				break;
+			case 'actions':
+				actionForm.reset(item);
+				break;
+			case 'records':
+				recordForm.reset(item);
+				break;
+			case 'admins':
+				adminForm.reset(item);
+				break;
+			case 'appeals':
+				appealForm.reset(item);
+				break;
+		}
 	};
 
-	const handleUpdate = async (
-		data: any,
-		type: string,
-	) => {
+	const handleAdd = () => {
+		setDialogMode('add');
+		setEditingItemId(null);
+		setIsDialogOpen(true);
+
+		switch (activeTab) {
+			case 'students':
+				studentForm.reset({});
+				break;
+			case 'incidents':
+				incidentForm.reset({});
+				break;
+			case 'actions':
+				actionForm.reset({});
+				break;
+			case 'records':
+				recordForm.reset({});
+				break;
+			case 'admins':
+				adminForm.reset({});
+				break;
+			case 'appeals':
+				appealForm.reset({});
+				break;
+		}
+	};
+
+	const onSubmit = async (data: any) => {
 		try {
-			await axios.put(
-				`http://localhost:5000/api/${type}/${data.id}`,
-				data,
-			);
-			toast({
-				title: 'Success',
-				description: `${type.charAt(0).toUpperCase() + type.slice(1)} updated successfully`,
-			});
-			setEditingItem(null);
+			if (dialogMode === 'edit') {
+				await axios.put(
+					`http://localhost:5000/api/${activeTab}/${editingItemId}`,
+					data,
+				);
+				toast({
+					title: 'Success',
+					description: `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1, -1)} updated successfully`,
+				});
+			} else {
+				await axios.post(
+					`http://localhost:5000/api/${activeTab}`,
+					data,
+				);
+				toast({
+					title: 'Success',
+					description: `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1, -1)} added successfully`,
+				});
+			}
+			setIsDialogOpen(false);
 			fetchData();
 		} catch (error) {
-			console.error(`Error updating ${type}:`, error);
+			console.error(
+				`Error ${dialogMode === 'edit' ? 'updating' : 'adding'} ${activeTab}:`,
+				error,
+			);
 			toast({
 				title: 'Error',
-				description: `Failed to update ${type}`,
+				description: `Failed to ${dialogMode === 'edit' ? 'update' : 'add'} ${activeTab}`,
 				variant: 'destructive',
 			});
 		}
 	};
 
-	const handleAdd = async (data: any, type: string) => {
-		try {
-			await axios.post(
-				`http://localhost:5000/api/${type}`,
-				data,
-			);
-			toast({
-				title: 'Success',
-				description: `${type.charAt(0).toUpperCase() + type.slice(1)} added successfully`,
-			});
-			setIsAddDialogOpen(false);
-			fetchData();
-		} catch (error) {
-			console.error(`Error adding ${type}:`, error);
-			toast({
-				title: 'Error',
-				description: `Failed to add ${type}`,
-				variant: 'destructive',
-			});
+	const renderForm = () => {
+		switch (activeTab) {
+			case 'students':
+				return (
+					<form
+						onSubmit={studentForm.handleSubmit(
+							onSubmit,
+						)}
+						className="space-y-4"
+					>
+						<Input
+							{...studentForm.register(
+								'first_name',
+							)}
+							placeholder="First Name"
+						/>
+						<Input
+							{...studentForm.register(
+								'last_name',
+							)}
+							placeholder="Last Name"
+						/>
+						<Input
+							{...studentForm.register(
+								'date_of_birth',
+							)}
+							type="date"
+							placeholder="Date of Birth"
+						/>
+						<Input
+							{...studentForm.register(
+								'email',
+							)}
+							type="email"
+							placeholder="Email"
+						/>
+						<Input
+							{...studentForm.register(
+								'parent_no',
+							)}
+							placeholder="Parent Number"
+						/>
+						<Button type="submit">
+							{dialogMode === 'edit'
+								? 'Update'
+								: 'Add'}{' '}
+							Student
+						</Button>
+					</form>
+				);
+			case 'incidents':
+				return (
+					<form
+						onSubmit={incidentForm.handleSubmit(
+							onSubmit,
+						)}
+						className="space-y-4"
+					>
+						<Input
+							{...incidentForm.register(
+								'Incident_name',
+							)}
+							placeholder="Incident Name"
+						/>
+						<Input
+							{...incidentForm.register(
+								'Incident_date',
+							)}
+							type="date"
+							placeholder="Incident Date"
+						/>
+						<Input
+							{...incidentForm.register(
+								'Incident_location',
+							)}
+							placeholder="Incident Location"
+						/>
+						<Input
+							{...incidentForm.register(
+								'Incident_sl',
+							)}
+							placeholder="Severity Level"
+						/>
+						<Button type="submit">
+							{dialogMode === 'edit'
+								? 'Update'
+								: 'Add'}{' '}
+							Incident
+						</Button>
+					</form>
+				);
+			case 'actions':
+				return (
+					<form
+						onSubmit={actionForm.handleSubmit(
+							onSubmit,
+						)}
+						className="space-y-4"
+					>
+						<Input
+							{...actionForm.register(
+								'Disciplinary_Incident_Type',
+							)}
+							placeholder="Incident Type"
+						/>
+						<Input
+							{...actionForm.register(
+								'Disciplinary_action_Taken',
+							)}
+							placeholder="Action Taken"
+						/>
+						<Textarea
+							{...actionForm.register(
+								'Disciplinary_Terms',
+							)}
+							placeholder="Terms"
+						/>
+						<Button type="submit">
+							{dialogMode === 'edit'
+								? 'Update'
+								: 'Add'}{' '}
+							Action
+						</Button>
+					</form>
+				);
+			case 'records':
+				return (
+					<form
+						onSubmit={recordForm.handleSubmit(
+							onSubmit,
+						)}
+						className="space-y-4"
+					>
+						<Textarea
+							{...recordForm.register(
+								'Disciplinary_Record_Description',
+							)}
+							placeholder="Description"
+						/>
+						<Input
+							{...recordForm.register(
+								'Disciplinary_Record_status',
+							)}
+							placeholder="Status"
+						/>
+						<Controller
+							name="StudentID"
+							control={recordForm.control}
+							render={({ field }) => (
+								<Select
+									onValueChange={
+										field.onChange
+									}
+									value={field.value}
+								>
+									<SelectTrigger>
+										<SelectValue placeholder="Select Student" />
+									</SelectTrigger>
+									<SelectContent>
+										{students.map(
+											(student) => (
+												<SelectItem
+													key={
+														student.id
+													}
+													value={
+														student.id
+													}
+												>
+													{
+														student.first_name
+													}{' '}
+													{
+														student.last_name
+													}
+												</SelectItem>
+											),
+										)}
+									</SelectContent>
+								</Select>
+							)}
+						/>
+						<Controller
+							name="IncidentID"
+							control={recordForm.control}
+							render={({ field }) => (
+								<Select
+									onValueChange={
+										field.onChange
+									}
+									value={field.value}
+								>
+									<SelectTrigger>
+										<SelectValue placeholder="Select Incident" />
+									</SelectTrigger>
+									<SelectContent>
+										{incidents.map(
+											(incident) => (
+												<SelectItem
+													key={
+														incident.id
+													}
+													value={
+														incident.id
+													}
+												>
+													{
+														incident.Incident_name
+													}
+												</SelectItem>
+											),
+										)}
+									</SelectContent>
+								</Select>
+							)}
+						/>
+						<Button type="submit">
+							{dialogMode === 'edit'
+								? 'Update'
+								: 'Add'}{' '}
+							Record
+						</Button>
+					</form>
+				);
+			case 'admins':
+				return (
+					<form
+						onSubmit={adminForm.handleSubmit(
+							onSubmit,
+						)}
+						className="space-y-4"
+					>
+						<Input
+							{...adminForm.register(
+								'Admin_name',
+							)}
+							placeholder="Admin Name"
+						/>
+						<Input
+							{...adminForm.register(
+								'Admin_date',
+							)}
+							type="date"
+							placeholder="Date"
+						/>
+						<Input
+							{...adminForm.register(
+								'Admin_location',
+							)}
+							placeholder="Location"
+						/>
+						<Input
+							{...adminForm.register(
+								'Admin_sl',
+							)}
+							placeholder="Security Level"
+						/>
+						<Button type="submit">
+							{dialogMode === 'edit'
+								? 'Update'
+								: 'Add'}{' '}
+							Admin
+						</Button>
+					</form>
+				);
+			case 'appeals':
+				return (
+					<form
+						onSubmit={appealForm.handleSubmit(
+							onSubmit,
+						)}
+						className="space-y-4"
+					>
+						<Input
+							{...appealForm.register(
+								'Appeal_name',
+							)}
+							placeholder="Appeal Name"
+						/>
+						<Textarea
+							{...appealForm.register(
+								'Appeal_reason',
+							)}
+							placeholder="Appeal Reason"
+						/>
+						<Input
+							{...appealForm.register(
+								'Appeal_Status',
+							)}
+							placeholder="Appeal Status"
+						/>
+						<Button type="submit">
+							{dialogMode === 'edit'
+								? 'Update'
+								: 'Add'}{' '}
+							Appeal
+						</Button>
+					</form>
+				);
+			default:
+				return null;
 		}
 	};
 
@@ -432,11 +756,7 @@ export default function AdminDashboard() {
 										List
 									</span>
 									<Button
-										onClick={() =>
-											setIsAddDialogOpen(
-												true,
-											)
-										}
+										onClick={handleAdd}
 									>
 										Add{' '}
 										{tab.slice(0, -1)}
@@ -987,633 +1307,20 @@ export default function AdminDashboard() {
 				))}
 			</Tabs>
 
-			{/* Edit Dialog */}
 			<Dialog
-				open={!!editingItem}
-				onOpenChange={() => setEditingItem(null)}
+				open={isDialogOpen}
+				onOpenChange={setIsDialogOpen}
 			>
-				<DialogContent>
+				<DialogContent className="bg-white">
 					<DialogHeader>
-						<DialogTitle>
-							Edit {activeTab.slice(0, -1)}
+						<DialogTitle className="text-gray-900">
+							{dialogMode === 'edit'
+								? 'Edit'
+								: 'Add'}{' '}
+							{activeTab.slice(0, -1)}
 						</DialogTitle>
 					</DialogHeader>
-					{activeTab === 'students' && (
-						<form
-							onSubmit={studentForm.handleSubmit(
-								(data) =>
-									handleUpdate(
-										data,
-										'students',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Input
-								{...studentForm.register(
-									'first_name',
-								)}
-								placeholder="First Name"
-							/>
-							<Input
-								{...studentForm.register(
-									'last_name',
-								)}
-								placeholder="Last Name"
-							/>
-							<Input
-								{...studentForm.register(
-									'date_of_birth',
-								)}
-								type="date"
-								placeholder="Date of Birth"
-							/>
-							<Input
-								{...studentForm.register(
-									'email',
-								)}
-								type="email"
-								placeholder="Email"
-							/>
-							<Input
-								{...studentForm.register(
-									'parent_no',
-								)}
-								placeholder="Parent Number"
-							/>
-							<Button type="submit">
-								Update Student
-							</Button>
-						</form>
-					)}
-					{activeTab === 'incidents' && (
-						<form
-							onSubmit={incidentForm.handleSubmit(
-								(data) =>
-									handleUpdate(
-										data,
-										'incidents',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Input
-								{...incidentForm.register(
-									'Incident_name',
-								)}
-								placeholder="Incident Name"
-							/>
-							<Input
-								{...incidentForm.register(
-									'Incident_date',
-								)}
-								type="date"
-								placeholder="Incident Date"
-							/>
-							<Input
-								{...incidentForm.register(
-									'Incident_location',
-								)}
-								placeholder="Incident Location"
-							/>
-							<Input
-								{...incidentForm.register(
-									'Incident_sl',
-								)}
-								placeholder="Severity Level"
-							/>
-							<Button type="submit">
-								Update Incident
-							</Button>
-						</form>
-					)}
-					{activeTab === 'actions' && (
-						<form
-							onSubmit={actionForm.handleSubmit(
-								(data) =>
-									handleUpdate(
-										data,
-										'actions',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Input
-								{...actionForm.register(
-									'Disciplinary_Incident_Type',
-								)}
-								placeholder="Incident Type"
-							/>
-							<Input
-								{...actionForm.register(
-									'Disciplinary_action_Taken',
-								)}
-								placeholder="Action Taken"
-							/>
-							<Textarea
-								{...actionForm.register(
-									'Disciplinary_Terms',
-								)}
-								placeholder="Terms"
-							/>
-							<Button type="submit">
-								Update Action
-							</Button>
-						</form>
-					)}
-					{activeTab === 'records' && (
-						<form
-							onSubmit={recordForm.handleSubmit(
-								(data) =>
-									handleUpdate(
-										data,
-										'records',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Textarea
-								{...recordForm.register(
-									'Disciplinary_Record_Description',
-								)}
-								placeholder="Description"
-							/>
-							<Input
-								{...recordForm.register(
-									'Disciplinary_Record_status',
-								)}
-								placeholder="Status"
-							/>
-							<Controller
-								name="StudentID"
-								control={recordForm.control}
-								render={({ field }) => (
-									<Select
-										onValueChange={
-											field.onChange
-										}
-										value={field.value}
-									>
-										<SelectTrigger>
-											<SelectValue placeholder="Select Student" />
-										</SelectTrigger>
-										<SelectContent>
-											{students.map(
-												(
-													student,
-												) => (
-													<SelectItem
-														key={
-															student.id
-														}
-														value={
-															student.id
-														}
-													>
-														{
-															student.first_name
-														}{' '}
-														{
-															student.last_name
-														}
-													</SelectItem>
-												),
-											)}
-										</SelectContent>
-									</Select>
-								)}
-							/>
-							<Controller
-								name="IncidentID"
-								control={recordForm.control}
-								render={({ field }) => (
-									<Select
-										onValueChange={
-											field.onChange
-										}
-										value={field.value}
-									>
-										<SelectTrigger>
-											<SelectValue placeholder="Select Incident" />
-										</SelectTrigger>
-										<SelectContent>
-											{incidents.map(
-												(
-													incident,
-												) => (
-													<SelectItem
-														key={
-															incident.id
-														}
-														value={
-															incident.id
-														}
-													>
-														{
-															incident.Incident_name
-														}
-													</SelectItem>
-												),
-											)}
-										</SelectContent>
-									</Select>
-								)}
-							/>
-							<Button type="submit">
-								Update Record
-							</Button>
-						</form>
-					)}
-					{activeTab === 'admins' && (
-						<form
-							onSubmit={adminForm.handleSubmit(
-								(data) =>
-									handleUpdate(
-										data,
-										'admins',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Input
-								{...adminForm.register(
-									'Admin_name',
-								)}
-								placeholder="Admin Name"
-							/>
-							<Input
-								{...adminForm.register(
-									'Admin_date',
-								)}
-								type="date"
-								placeholder="Date"
-							/>
-							<Input
-								{...adminForm.register(
-									'Admin_location',
-								)}
-								placeholder="Location"
-							/>
-							<Input
-								{...adminForm.register(
-									'Admin_sl',
-								)}
-								placeholder="Security Level"
-							/>
-							<Button type="submit">
-								Update Admin
-							</Button>
-						</form>
-					)}
-					{activeTab === 'appeals' && (
-						<form
-							onSubmit={appealForm.handleSubmit(
-								(data) =>
-									handleUpdate(
-										data,
-										'appeals',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Input
-								{...appealForm.register(
-									'Appeal_name',
-								)}
-								placeholder="Appeal Name"
-							/>
-							<Textarea
-								{...appealForm.register(
-									'Appeal_reason',
-								)}
-								placeholder="Appeal Reason"
-							/>
-							<Input
-								{...appealForm.register(
-									'Appeal_Status',
-								)}
-								placeholder="Appeal Status"
-							/>
-							<Button type="submit">
-								Update Appeal
-							</Button>
-						</form>
-					)}
-				</DialogContent>
-			</Dialog>
-
-			{/* Add Dialog */}
-			<Dialog
-				open={isAddDialogOpen}
-				onOpenChange={setIsAddDialogOpen}
-			>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>
-							Add {activeTab.slice(0, -1)}
-						</DialogTitle>
-					</DialogHeader>
-					{activeTab === 'students' && (
-						<form
-							onSubmit={studentForm.handleSubmit(
-								(data) =>
-									handleAdd(
-										data,
-										'students',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Input
-								{...studentForm.register(
-									'first_name',
-								)}
-								placeholder="First Name"
-							/>
-							<Input
-								{...studentForm.register(
-									'last_name',
-								)}
-								placeholder="Last Name"
-							/>
-							<Input
-								{...studentForm.register(
-									'date_of_birth',
-								)}
-								type="date"
-								placeholder="Date of Birth"
-							/>
-							<Input
-								{...studentForm.register(
-									'email',
-								)}
-								type="email"
-								placeholder="Email"
-							/>
-							<Input
-								{...studentForm.register(
-									'parent_no',
-								)}
-								placeholder="Parent Number"
-							/>
-							<Button type="submit">
-								Add Student
-							</Button>
-						</form>
-					)}
-					{activeTab === 'incidents' && (
-						<form
-							onSubmit={incidentForm.handleSubmit(
-								(data) =>
-									handleAdd(
-										data,
-										'incidents',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Input
-								{...incidentForm.register(
-									'Incident_name',
-								)}
-								placeholder="Incident Name"
-							/>
-							<Input
-								{...incidentForm.register(
-									'Incident_date',
-								)}
-								type="date"
-								placeholder="Incident Date"
-							/>
-							<Input
-								{...incidentForm.register(
-									'Incident_location',
-								)}
-								placeholder="Incident Location"
-							/>
-							<Input
-								{...incidentForm.register(
-									'Incident_sl',
-								)}
-								placeholder="Severity Level"
-							/>
-							<Button type="submit">
-								Add Incident
-							</Button>
-						</form>
-					)}
-					{activeTab === 'actions' && (
-						<form
-							onSubmit={actionForm.handleSubmit(
-								(data) =>
-									handleAdd(
-										data,
-										'actions',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Input
-								{...actionForm.register(
-									'Disciplinary_Incident_Type',
-								)}
-								placeholder="Incident Type"
-							/>
-							<Input
-								{...actionForm.register(
-									'Disciplinary_action_Taken',
-								)}
-								placeholder="Action Taken"
-							/>
-							<Textarea
-								{...actionForm.register(
-									'Disciplinary_Terms',
-								)}
-								placeholder="Terms"
-							/>
-							<Button type="submit">
-								Add Action
-							</Button>
-						</form>
-					)}
-					{activeTab === 'records' && (
-						<form
-							onSubmit={recordForm.handleSubmit(
-								(data) =>
-									handleAdd(
-										data,
-										'records',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Textarea
-								{...recordForm.register(
-									'Disciplinary_Record_Description',
-								)}
-								placeholder="Description"
-							/>
-							<Input
-								{...recordForm.register(
-									'Disciplinary_Record_status',
-								)}
-								placeholder="Status"
-							/>
-							<Controller
-								name="StudentID"
-								control={recordForm.control}
-								render={({ field }) => (
-									<Select
-										onValueChange={
-											field.onChange
-										}
-										value={field.value}
-									>
-										<SelectTrigger>
-											<SelectValue placeholder="Select Student" />
-										</SelectTrigger>
-										<SelectContent>
-											{students.map(
-												(
-													student,
-												) => (
-													<SelectItem
-														key={
-															student.id
-														}
-														value={
-															student.id
-														}
-													>
-														{
-															student.first_name
-														}{' '}
-														{
-															student.last_name
-														}
-													</SelectItem>
-												),
-											)}
-										</SelectContent>
-									</Select>
-								)}
-							/>
-							<Controller
-								name="IncidentID"
-								control={recordForm.control}
-								render={({ field }) => (
-									<Select
-										onValueChange={
-											field.onChange
-										}
-										value={field.value}
-									>
-										<SelectTrigger>
-											<SelectValue placeholder="Select Incident" />
-										</SelectTrigger>
-										<SelectContent>
-											{incidents.map(
-												(
-													incident,
-												) => (
-													<SelectItem
-														key={
-															incident.id
-														}
-														value={
-															incident.id
-														}
-													>
-														{
-															incident.Incident_name
-														}
-													</SelectItem>
-												),
-											)}
-										</SelectContent>
-									</Select>
-								)}
-							/>
-							<Button type="submit">
-								Add Record
-							</Button>
-						</form>
-					)}
-					{activeTab === 'admins' && (
-						<form
-							onSubmit={adminForm.handleSubmit(
-								(data) =>
-									handleAdd(
-										data,
-										'admins',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Input
-								{...adminForm.register(
-									'Admin_name',
-								)}
-								placeholder="Admin Name"
-							/>
-							<Input
-								{...adminForm.register(
-									'Admin_date',
-								)}
-								type="date"
-								placeholder="Date"
-							/>
-							<Input
-								{...adminForm.register(
-									'Admin_location',
-								)}
-								placeholder="Location"
-							/>
-							<Input
-								{...adminForm.register(
-									'Admin_sl',
-								)}
-								placeholder="Security Level"
-							/>
-							<Button type="submit">
-								Add Admin
-							</Button>
-						</form>
-					)}
-					{activeTab === 'appeals' && (
-						<form
-							onSubmit={appealForm.handleSubmit(
-								(data) =>
-									handleAdd(
-										data,
-										'appeals',
-									),
-							)}
-							className="space-y-4"
-						>
-							<Input
-								{...appealForm.register(
-									'Appeal_name',
-								)}
-								placeholder="Appeal Name"
-							/>
-							<Textarea
-								{...appealForm.register(
-									'Appeal_reason',
-								)}
-								placeholder="Appeal Reason"
-							/>
-							<Input
-								{...appealForm.register(
-									'Appeal_Status',
-								)}
-								placeholder="Appeal Status"
-							/>
-							<Button type="submit">
-								Add Appeal
-							</Button>
-						</form>
-					)}
+					{renderForm()}
 				</DialogContent>
 			</Dialog>
 		</div>
