@@ -367,7 +367,7 @@ export default function AdminDashboard() {
 	const onSubmit = async (data: any) => {
 		try {
 			if (dialogMode === 'edit') {
-				await axios.put(
+				await axios.post(
 					`http://localhost:5000/api/${activeTab}/${editingItemId}`,
 					data,
 				);
