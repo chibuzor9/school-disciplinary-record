@@ -252,22 +252,22 @@ export default function AdminDashboard() {
 				appealsRes,
 			] = await Promise.all([
 				axios.get(
-					'http://localhost:5000/api/students',
+					'http://localhost:5000/api/student',
 				),
 				axios.get(
-					'http://localhost:5000/api/incidents',
+					'http://localhost:5000/api/incident',
 				),
 				axios.get(
-					'http://localhost:5000/api/disciplinary-actions',
+					'http://localhost:5000/api/disciplinary-action',
 				),
 				axios.get(
-					'http://localhost:5000/api/disciplinary-records',
+					'http://localhost:5000/api/disciplinary-record',
 				),
 				axios.get(
-					'http://localhost:5000/api/admins',
+					'http://localhost:5000/api/admin',
 				),
 				axios.get(
-					'http://localhost:5000/api/appeals',
+					'http://localhost:5000/api/appeal',
 				),
 			]);
 
@@ -944,7 +944,7 @@ export default function AdminDashboard() {
 																onClick={() =>
 																	handleDelete(
 																		student.id,
-																		'students',
+																		'student',
 																	)
 																}
 																variant="destructive"
@@ -1007,7 +1007,7 @@ export default function AdminDashboard() {
 																onClick={() =>
 																	handleDelete(
 																		incident.id,
-																		'incidents',
+																		'incident',
 																	)
 																}
 																variant="destructive"
@@ -1065,7 +1065,7 @@ export default function AdminDashboard() {
 																onClick={() =>
 																	handleDelete(
 																		action.id,
-																		'actions',
+																		'action',
 																	)
 																}
 																variant="destructive"
@@ -1170,7 +1170,7 @@ export default function AdminDashboard() {
 																onClick={() =>
 																	handleDelete(
 																		record.id,
-																		'records',
+																		'record',
 																	)
 																}
 																variant="destructive"
@@ -1230,7 +1230,7 @@ export default function AdminDashboard() {
 																onClick={() =>
 																	handleDelete(
 																		admin.id,
-																		'admins',
+																		'admin',
 																	)
 																}
 																variant="destructive"
@@ -1288,7 +1288,7 @@ export default function AdminDashboard() {
 																onClick={() =>
 																	handleDelete(
 																		appeal.id,
-																		'appeals',
+																		'appeal',
 																	)
 																}
 																variant="destructive"

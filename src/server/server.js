@@ -29,133 +29,144 @@ async function connectToDatabase() {
 connectToDatabase();
 
 // Generic CRUD operations
-const crudOperations = (table) => ({
-	getAll: async (req, res) => {
-		try {
-			const [results] = await db.query(
-				`SELECT * FROM ${table}`,
-			);
-			res.json(results);
-		} catch (err) {
-			console.error(`Error fetching ${table}:`, err);
-			res.status(500).json({
-				error: 'Database error',
-			});
-		}
-	},
-
-	getOne: async (req, res) => {
-		try {
-			const [results] = await db.query(
-				`SELECT * FROM ${table} WHERE id = ?`,
-				[req.params.id],
-			);
-			if (results.length > 0) {
-				res.json(results[0]);
-			} else {
-				res.status(404).json({
-					error: 'Not found',
+const crudOperations = (table) => {
+	if (table[table.length - 1] === 's') {
+		table = table.slice(0, -1); // Removes the last character
+	}
+	return {
+		getAll: async (req, res) => {
+			try {
+				const [results] = await db.query(
+					`SELECT * FROM ${table}`,
+				);
+				res.json(results);
+			} catch (err) {
+				console.error(
+					`Error fetching ${table}:`,
+					err,
+				);
+				res.status(500).json({
+					error: 'Database error',
 				});
 			}
-		} catch (err) {
-			console.error(
-				`Error fetching ${table} entry:`,
-				err,
-			);
-			res.status(500).json({
-				error: 'Database error',
-			});
-		}
-	},
+		},
 
-	create: async (req, res) => {
-		try {
-			const columns = Object.keys(req.body).join(
-				', ',
-			);
-			const placeholders = Object.keys(req.body)
-				.map(() => '?')
-				.join(', ');
-			const values = Object.values(req.body);
+		getOne: async (req, res) => {
+			try {
+				const [results] = await db.query(
+					`SELECT * FROM ${table} WHERE id = ?`,
+					[req.params.id],
+				);
+				if (results.length > 0) {
+					res.json(results[0]);
+				} else {
+					res.status(404).json({
+						error: 'Not found',
+					});
+				}
+			} catch (err) {
+				console.error(
+					`Error fetching ${table} entry:`,
+					err,
+				);
+				res.status(500).json({
+					error: 'Database error',
+				});
+			}
+		},
 
-			const [result] = await db.query(
-				`INSERT INTO ${table} (${columns}) VALUES (${placeholders})`,
-				values,
-			);
+		create: async (req, res) => {
+			try {
+				const columns = Object.keys(req.body).join(
+					', ',
+				);
+				const placeholders = Object.keys(req.body)
+					.map(() => '?')
+					.join(', ');
+				const values = Object.values(req.body);
 
-			res.json({
-				success: true,
-				message: `${table} entry added successfully`,
-				id: result.insertId,
-			});
-		} catch (err) {
-			console.error(
-				`Error adding ${table} entry:`,
-				err,
-			);
-			res.status(500).json({
-				error: 'Database error',
-			});
-		}
-	},
+				const [result] = await db.query(
+					`INSERT INTO ${table} (${columns}) VALUES (${placeholders})`,
+					values,
+				);
 
-	update: async (req, res) => {
-		try {
-			const id = req.params.id;
-			const updates = Object.entries(req.body)
-				// eslint-disable-next-line no-unused-vars
-				.map(([key, value]) => `${key} = ?`)
-				.join(', ');
-			const values = [...Object.values(req.body), id];
+				res.json({
+					success: true,
+					message: `${table} entry added successfully`,
+					id: result.insertId,
+				});
+			} catch (err) {
+				console.error(
+					`Error adding ${table} entry:`,
+					err,
+				);
+				res.status(500).json({
+					error: 'Database error',
+				});
+			}
+		},
 
-			await db.query(
-				`UPDATE ${table} SET ${updates} WHERE id = ?`,
-				values,
-			);
+		update: async (req, res) => {
+			try {
+				const id = req.params.id;
+				const updates = Object.entries(req.body)
+					// eslint-disable-next-line no-unused-vars
+					.map(([key, value]) => `${key} = ?`)
+					.join(', ');
+				const values = [
+					...Object.values(req.body),
+					id,
+				];
 
-			res.json({
-				success: true,
-				message: `${table} entry updated successfully`,
-			});
-		} catch (err) {
-			console.error(
-				`Error updating ${table} entry:`,
-				err,
-			);
-			res.status(500).json({
-				error: 'Database error',
-			});
-		}
-	},
+				await db.query(
+					`UPDATE ${table} SET ${updates} WHERE id = ?`,
+					values,
+				);
 
-	delete: async (req, res) => {
-		try {
-			const id = req.params.id;
+				res.json({
+					success: true,
+					message: `${table} entry updated successfully`,
+				});
+			} catch (err) {
+				console.error(
+					`Error updating ${table} entry:`,
+					err,
+				);
+				res.status(500).json({
+					error: 'Database error',
+				});
+			}
+		},
 
-			await db.query(
-				`DELETE FROM ${table} WHERE id = ?`,
-				[id],
-			);
+		delete: async (req, res) => {
+			try {
+				const id = req.params.id;
 
-			res.json({
-				success: true,
-				message: `${table} entry deleted successfully`,
-			});
-		} catch (err) {
-			console.error(
-				`Error deleting ${table} entry:`,
-				err,
-			);
-			res.status(500).json({
-				error: 'Database error',
-			});
-		}
-	},
-});
+				await db.query(
+					`DELETE FROM ${table} WHERE id = ?`,
+					[id],
+				);
+
+				res.json({
+					success: true,
+					message: `${table} entry deleted successfully`,
+				});
+			} catch (err) {
+				console.error(
+					`Error deleting ${table} entry:`,
+					err,
+				);
+				res.status(500).json({
+					error: 'Database error',
+				});
+			}
+		},
+	};
+};
 
 // Apply CRUD operations to all tables
 const tables = [
-	'Students',
+	'Student',
 	'Incident',
 	'Disciplinary_Record',
 	'Disciplinary_Action',
@@ -189,10 +200,10 @@ tables.forEach((table) => {
 });
 
 // Specific routes for Students
-app.get('/api/students', async (req, res) => {
+app.get('/api/student', async (req, res) => {
 	try {
 		const [results] = await db.query(
-			'SELECT * FROM Students',
+			'SELECT * FROM Student',
 		);
 		res.json(results);
 	} catch (err) {
@@ -201,7 +212,7 @@ app.get('/api/students', async (req, res) => {
 	}
 });
 
-app.post('/api/students', async (req, res) => {
+app.post('/api/student', async (req, res) => {
 	const {
 		first_name,
 		last_name,
@@ -211,7 +222,7 @@ app.post('/api/students', async (req, res) => {
 	} = req.body;
 	try {
 		const [result] = await db.query(
-			'INSERT INTO Students (first_name, last_name, date_of_birth, email, parent_no) VALUES (?, ?, ?, ?, ?)',
+			'INSERT INTO Student (first_name, last_name, date_of_birth, email, parent_no) VALUES (?, ?, ?, ?, ?)',
 			[
 				first_name,
 				last_name,
@@ -232,7 +243,7 @@ app.post('/api/students', async (req, res) => {
 });
 
 // Specific routes for Incidents
-app.get('/api/incidents', async (req, res) => {
+app.get('/api/incident', async (req, res) => {
 	try {
 		const [results] = await db.query(
 			'SELECT * FROM Incident',
@@ -244,7 +255,7 @@ app.get('/api/incidents', async (req, res) => {
 	}
 });
 
-app.post('/api/incidents', async (req, res) => {
+app.post('/api/incident', async (req, res) => {
 	const {
 		Incident_name,
 		Incident_date,
@@ -273,7 +284,7 @@ app.post('/api/incidents', async (req, res) => {
 });
 
 // Specific routes for Disciplinary Actions
-app.get('/api/disciplinary-actions', async (req, res) => {
+app.get('/api/disciplinary-action', async (req, res) => {
 	try {
 		const [results] = await db.query(
 			'SELECT * FROM Disciplinary_Action',
@@ -288,7 +299,7 @@ app.get('/api/disciplinary-actions', async (req, res) => {
 	}
 });
 
-app.post('/api/disciplinary-actions', async (req, res) => {
+app.post('/api/disciplinary-action', async (req, res) => {
 	const {
 		Disciplinary_Incident_Type,
 		Disciplinary_action_Taken,
@@ -319,7 +330,7 @@ app.post('/api/disciplinary-actions', async (req, res) => {
 });
 
 // Specific routes for Disciplinary Records
-app.get('/api/disciplinary-records', async (req, res) => {
+app.get('/api/disciplinary-record', async (req, res) => {
 	try {
 		const [results] = await db.query(
 			'SELECT * FROM Disciplinary_Record',
@@ -334,7 +345,7 @@ app.get('/api/disciplinary-records', async (req, res) => {
 	}
 });
 
-app.post('/api/disciplinary-records', async (req, res) => {
+app.post('/api/disciplinary-record', async (req, res) => {
 	const {
 		Disciplinary_Record_Description,
 		Disciplinary_Record_status,
@@ -367,7 +378,7 @@ app.post('/api/disciplinary-records', async (req, res) => {
 });
 
 // Specific routes for Admins
-app.get('/api/admins', async (req, res) => {
+app.get('/api/admin', async (req, res) => {
 	try {
 		const [results] = await db.query(
 			'SELECT * FROM Admin',
@@ -379,7 +390,7 @@ app.get('/api/admins', async (req, res) => {
 	}
 });
 
-app.post('/api/admins', async (req, res) => {
+app.post('/api/admin', async (req, res) => {
 	const {
 		Admin_name,
 		Admin_date,
@@ -408,7 +419,7 @@ app.post('/api/admins', async (req, res) => {
 });
 
 // Specific routes for Appeals
-app.get('/api/appeals', async (req, res) => {
+app.get('/api/appeal', async (req, res) => {
 	try {
 		const [results] = await db.query(
 			'SELECT * FROM Appeal',
@@ -420,7 +431,7 @@ app.get('/api/appeals', async (req, res) => {
 	}
 });
 
-app.post('/api/appeals', async (req, res) => {
+app.post('/api/appeal', async (req, res) => {
 	const { Appeal_name, Appeal_reason, Appeal_Status } =
 		req.body;
 	try {
@@ -444,4 +455,3 @@ app.listen(PORT, () => {
 		`Server is running on http://localhost:${PORT}`,
 	);
 });
-
