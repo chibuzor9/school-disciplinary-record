@@ -168,8 +168,8 @@ const crudOperations = (table) => {
 const tables = [
 	'Student',
 	'Incident',
-	'Disciplinary_Record',
-	'Disciplinary_Action',
+	'Record',
+	'Action',
 	'Admin',
 	'Appeal',
 ];
@@ -284,10 +284,10 @@ app.post('/api/incident', async (req, res) => {
 });
 
 // Specific routes for Disciplinary Actions
-app.get('/api/disciplinary-action', async (req, res) => {
+app.get('/api/action', async (req, res) => {
 	try {
 		const [results] = await db.query(
-			'SELECT * FROM Disciplinary_Action',
+			'SELECT * FROM Action',
 		);
 		res.json(results);
 	} catch (err) {
@@ -299,7 +299,7 @@ app.get('/api/disciplinary-action', async (req, res) => {
 	}
 });
 
-app.post('/api/disciplinary-action', async (req, res) => {
+app.post('/api/action', async (req, res) => {
 	const {
 		Disciplinary_Incident_Type,
 		Disciplinary_action_Taken,
@@ -307,7 +307,7 @@ app.post('/api/disciplinary-action', async (req, res) => {
 	} = req.body;
 	try {
 		const [result] = await db.query(
-			'INSERT INTO Disciplinary_Action (Disciplinary_Incident_Type, Disciplinary_action_Taken, Disciplinary_Terms) VALUES (?, ?, ?)',
+			'INSERT INTO action (Disciplinary_Incident_Type, Disciplinary_action_Taken, Disciplinary_Terms) VALUES (?, ?, ?)',
 			[
 				Disciplinary_Incident_Type,
 				Disciplinary_action_Taken,
@@ -330,10 +330,10 @@ app.post('/api/disciplinary-action', async (req, res) => {
 });
 
 // Specific routes for Disciplinary Records
-app.get('/api/disciplinary-record', async (req, res) => {
+app.get('/api/record', async (req, res) => {
 	try {
 		const [results] = await db.query(
-			'SELECT * FROM Disciplinary_Record',
+			'SELECT * FROM Record',
 		);
 		res.json(results);
 	} catch (err) {
@@ -345,7 +345,7 @@ app.get('/api/disciplinary-record', async (req, res) => {
 	}
 });
 
-app.post('/api/disciplinary-record', async (req, res) => {
+app.post('/api/record', async (req, res) => {
 	const {
 		Disciplinary_Record_Description,
 		Disciplinary_Record_status,
@@ -354,7 +354,7 @@ app.post('/api/disciplinary-record', async (req, res) => {
 	} = req.body;
 	try {
 		const [result] = await db.query(
-			'INSERT INTO Disciplinary_Record (Disciplinary_Record_Description, Disciplinary_Record_status, StudentID, IncidentID) VALUES (?, ?, ?, ?)',
+			'INSERT INTO Record (Disciplinary_Record_Description, Disciplinary_Record_status, StudentID, IncidentID) VALUES (?, ?, ?, ?)',
 			[
 				Disciplinary_Record_Description,
 				Disciplinary_Record_status,

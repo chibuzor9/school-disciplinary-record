@@ -258,10 +258,10 @@ export default function AdminDashboard() {
 					'http://localhost:5000/api/incident',
 				),
 				axios.get(
-					'http://localhost:5000/api/disciplinary-action',
+					'http://localhost:5000/api/action',
 				),
 				axios.get(
-					'http://localhost:5000/api/disciplinary-record',
+					'http://localhost:5000/api/record',
 				),
 				axios.get(
 					'http://localhost:5000/api/admin',
