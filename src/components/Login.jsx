@@ -1,40 +1,57 @@
 import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
-const Login = (props) => {
+import axios from 'axios';
+
+const Login = () => {
+	const navigate = useNavigate();
 	const [username, setUsername] = useState('');
 	const [password, setPassword] = useState('');
 
-	const location = useLocation();
+	const handleUsernameChange = (event) => {
+		setUsername(event.target.value);
+	};
 
-	const placeholder =
-		location.pathname === '/staff'
-			? 'Username'
-			: location.pathname === '/student'
-				? 'Matric No'
-				: 'Enter details';
+	const handlePasswordChange = (event) => {
+		setPassword(event.target.value);
+	};
 
-	const loginHandler = (e) => {
-		e.preventDefault();
-		if (!username || !password) {
-			alert('Fill all fields');
-			return;
-		} else if (
-			username === '22/0060' &&
-			password === 'asdf'
-		) {
-			// eslint-disable-next-line react/prop-types
-			props.onSuccess('Admin');
-		} else if (
-			username === '1' ||
-			password === 'asdf'
-		) {
-			// eslint-disable-next-line react/prop-types
-			props.onSuccess('Staff');
-		} else {
-			alert('Wrong Email or Password');
-			setUsername('');
-			setPassword('');
+	const handleSubmit = async (event) => {
+		event.preventDefault();
+		await fetchData();
+	};
+
+	const fetchData = async () => {
+		try {
+			const { data: checkData } = await axios.get(
+				'http://localhost:5000/api/authenticate',
+			);
+
+			const user = checkData.find(
+				(item) =>
+					item.username === username &&
+					item.password === password,
+			);
+
+			if (user) {
+				// Store the StudentID in localStorage
+				localStorage.setItem(
+					'studentId',
+					user.StudentID.toString(),
+				);
+
+				if (user.role === 'admin') {
+					navigate('/admin');
+				} else if (user.role === 'student') {
+					navigate('/student');
+				} else {
+					console.error('Invalid role');
+				}
+			} else {
+				alert('Invalid Username or Password');
+			}
+		} catch (error) {
+			console.error('Error fetching data:', error);
 		}
 	};
 
@@ -49,12 +66,10 @@ const Login = (props) => {
 						<div className="group relative flex items-center">
 							<input
 								type="text"
-								placeholder={placeholder}
+								placeholder="Username"
 								value={username}
-								onChange={(e) =>
-									setUsername(
-										e.target.value,
-									)
+								onChange={
+									handleUsernameChange
 								}
 								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-customBlue"
 							/>
@@ -64,10 +79,8 @@ const Login = (props) => {
 								type="password"
 								placeholder="Password"
 								value={password}
-								onChange={(e) =>
-									setPassword(
-										e.target.value,
-									)
+								onChange={
+									handlePasswordChange
 								}
 								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-customBlue"
 							/>
@@ -75,7 +88,7 @@ const Login = (props) => {
 						<div className="group relative flex items-center">
 							<button
 								className="w-full px-4 py-2 h-16 bg-customBlue text-white border border-customPurple rounded-lg hover:shadow-lg hover:border-customBlue transition-colors duration-300"
-								onClick={loginHandler}
+								onClick={handleSubmit}
 							>
 								Login
 							</button>

@@ -48,11 +48,12 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from './ui/popover';
+import { Label } from './ui/label';
 import axios from 'axios';
 
 // Schema definitions
 const studentSchema = z.object({
-	id: z.string().optional(),
+	id: z.number().optional(),
 	first_name: z.string().min(1, 'First name is required'),
 	last_name: z.string().min(1, 'Last name is required'),
 	date_of_birth: z
@@ -65,7 +66,7 @@ const studentSchema = z.object({
 });
 
 const incidentSchema = z.object({
-	id: z.string().optional(),
+	id: z.number().optional(),
 	Incident_name: z
 		.string()
 		.min(1, 'Incident name is required'),
@@ -81,7 +82,7 @@ const incidentSchema = z.object({
 });
 
 const actionSchema = z.object({
-	id: z.string().optional(),
+	id: z.number().optional(),
 	Disciplinary_Incident_Type: z
 		.string()
 		.min(1, 'Incident type is required'),
@@ -94,21 +95,21 @@ const actionSchema = z.object({
 });
 
 const recordSchema = z.object({
-	id: z.string().optional(),
+	id: z.number().optional(),
 	Disciplinary_Record_Description: z
 		.string()
 		.min(1, 'Description is required'),
 	Disciplinary_Record_status: z
 		.string()
 		.min(1, 'Status is required'),
-	StudentID: z.string().min(1, 'Student ID is required'),
+	StudentID: z.number().min(1, 'Student ID is required'),
 	IncidentID: z
-		.string()
+		.number()
 		.min(1, 'Incident ID is required'),
 });
 
 const adminSchema = z.object({
-	id: z.string().optional(),
+	id: z.number().optional(),
 	Admin_name: z.string().min(1, 'Admin name is required'),
 	Admin_date: z.string().min(1, 'Date is required'),
 	Admin_location: z
@@ -120,7 +121,7 @@ const adminSchema = z.object({
 });
 
 const appealSchema = z.object({
-	id: z.string().optional(),
+	id: z.number().optional(),
 	Appeal_name: z
 		.string()
 		.min(1, 'Appeal name is required'),
@@ -134,7 +135,7 @@ const appealSchema = z.object({
 
 // Interface definitions
 interface Student {
-	id: string;
+	id: number;
 	first_name: string;
 	last_name: string;
 	date_of_birth: string;
@@ -143,7 +144,7 @@ interface Student {
 }
 
 interface Incident {
-	id: string;
+	id: number;
 	Incident_name: string;
 	Incident_date: string;
 	Incident_location: string;
@@ -151,22 +152,22 @@ interface Incident {
 }
 
 interface DisciplinaryAction {
-	id: string;
+	id: number;
 	Disciplinary_Incident_Type: string;
 	Disciplinary_action_Taken: string;
 	Disciplinary_Terms: string;
 }
 
 interface DisciplinaryRecord {
-	id: string;
+	id: number;
 	Disciplinary_Record_Description: string;
 	Disciplinary_Record_status: string;
-	StudentID: string;
-	IncidentID: string;
+	StudentID: number;
+	IncidentID: number;
 }
 
 interface Admin {
-	id: string;
+	id: number;
 	Admin_name: string;
 	Admin_date: string;
 	Admin_location: string;
@@ -174,14 +175,22 @@ interface Admin {
 }
 
 interface Appeal {
-	id: string;
+	id: number;
 	Appeal_name: string;
 	Appeal_reason: string;
 	Appeal_Status: string;
+	StudentID: number;
 }
 
 export default function AdminDashboard() {
-	const { toast } = useToast();
+	const [activeTab, setActiveTab] = useState('students');
+	const [isDialogOpen, setIsDialogOpen] = useState(false);
+	const [dialogMode, setDialogMode] = useState<
+		'add' | 'edit'
+	>('add');
+	const [editingItemId, setEditingItemId] = useState<
+		number | null
+	>(null);
 	const [students, setStudents] = useState<Student[]>([]);
 	const [incidents, setIncidents] = useState<Incident[]>(
 		[],
@@ -194,14 +203,8 @@ export default function AdminDashboard() {
 	>([]);
 	const [admins, setAdmins] = useState<Admin[]>([]);
 	const [appeals, setAppeals] = useState<Appeal[]>([]);
-	const [activeTab, setActiveTab] = useState('students');
-	const [isDialogOpen, setIsDialogOpen] = useState(false);
-	const [dialogMode, setDialogMode] = useState<
-		'add' | 'edit'
-	>('add');
-	const [editingItemId, setEditingItemId] = useState<
-		string | null
-	>(null);
+
+	const { toast } = useToast();
 
 	const studentForm = useForm<
 		z.infer<typeof studentSchema>
@@ -237,46 +240,42 @@ export default function AdminDashboard() {
 		resolver: zodResolver(appealSchema),
 	});
 
-	useEffect(() => {
-		fetchData();
-	}, []);
-
 	const fetchData = async () => {
 		try {
 			const [
-				studentsRes,
-				incidentsRes,
-				actionsRes,
-				recordsRes,
-				adminsRes,
-				appealsRes,
+				studentsData,
+				incidentsData,
+				actionsData,
+				recordsData,
+				adminsData,
+				appealsData,
 			] = await Promise.all([
-				axios.get(
+				axios.get<Student[]>(
 					'http://localhost:5000/api/student',
 				),
-				axios.get(
+				axios.get<Incident[]>(
 					'http://localhost:5000/api/incident',
 				),
-				axios.get(
+				axios.get<DisciplinaryAction[]>(
 					'http://localhost:5000/api/action',
 				),
-				axios.get(
+				axios.get<DisciplinaryRecord[]>(
 					'http://localhost:5000/api/record',
 				),
-				axios.get(
+				axios.get<Admin[]>(
 					'http://localhost:5000/api/admin',
 				),
-				axios.get(
+				axios.get<Appeal[]>(
 					'http://localhost:5000/api/appeal',
 				),
 			]);
 
-			setStudents(studentsRes.data);
-			setIncidents(incidentsRes.data);
-			setActions(actionsRes.data);
-			setRecords(recordsRes.data);
-			setAdmins(adminsRes.data);
-			setAppeals(appealsRes.data);
+			setStudents(studentsData.data);
+			setIncidents(incidentsData.data);
+			setActions(actionsData.data);
+			setRecords(recordsData.data);
+			setAdmins(adminsData.data);
+			setAppeals(appealsData.data);
 		} catch (error) {
 			console.error('Error fetching data:', error);
 			toast({
@@ -287,80 +286,52 @@ export default function AdminDashboard() {
 		}
 	};
 
-	const handleDelete = async (
-		id: string,
-		type: string,
-	) => {
-		try {
-			await axios.delete(
-				`http://localhost:5000/api/${type}/${id}`,
-			);
-			toast({
-				title: 'Success',
-				description: `${type.charAt(0).toUpperCase() + type.slice(1)} deleted successfully`,
-			});
-			fetchData();
-		} catch (error) {
-			console.error(`Error deleting ${type}:`, error);
-			toast({
-				title: 'Error',
-				description: `Failed to delete ${type}`,
-				variant: 'destructive',
-			});
-		}
+	useEffect(() => {
+		fetchData();
+	}, []);
+
+	const handleAdd = () => {
+		setDialogMode('add');
+		setEditingItemId(null);
+		setIsDialogOpen(true);
+		resetForm();
 	};
 
 	const handleEdit = (item: any, type: string) => {
 		setDialogMode('edit');
 		setEditingItemId(item.id);
 		setIsDialogOpen(true);
-
-		switch (type) {
-			case 'students':
-				studentForm.reset(item);
-				break;
-			case 'incidents':
-				incidentForm.reset(item);
-				break;
-			case 'actions':
-				actionForm.reset(item);
-				break;
-			case 'records':
-				recordForm.reset(item);
-				break;
-			case 'admins':
-				adminForm.reset(item);
-				break;
-			case 'appeals':
-				appealForm.reset(item);
-				break;
-		}
+		setActiveTab(type + 's');
+		resetForm(item, type);
 	};
 
-	const handleAdd = () => {
-		setDialogMode('add');
-		setEditingItemId(null);
-		setIsDialogOpen(true);
-
-		switch (activeTab) {
-			case 'students':
-				studentForm.reset({});
+	const resetForm = (item?: any, type?: string) => {
+		switch (type) {
+			case 'student':
+				studentForm.reset(item);
 				break;
-			case 'incidents':
-				incidentForm.reset({});
+			case 'incident':
+				incidentForm.reset(item);
 				break;
-			case 'actions':
-				actionForm.reset({});
+			case 'action':
+				actionForm.reset(item);
 				break;
-			case 'records':
-				recordForm.reset({});
+			case 'record':
+				recordForm.reset(item);
 				break;
-			case 'admins':
-				adminForm.reset({});
+			case 'admin':
+				adminForm.reset(item);
 				break;
-			case 'appeals':
-				appealForm.reset({});
+			case 'appeal':
+				appealForm.reset(item);
 				break;
+			default:
+				studentForm.reset();
+				incidentForm.reset();
+				actionForm.reset();
+				recordForm.reset();
+				adminForm.reset();
+				appealForm.reset();
 		}
 	};
 
@@ -368,7 +339,7 @@ export default function AdminDashboard() {
 		try {
 			const singularTab = activeTab.endsWith('s')
 				? activeTab.slice(0, -1)
-				: activeTab; // Remove trailing 's' if it exists
+				: activeTab;
 
 			if (dialogMode === 'edit') {
 				await axios.put(
@@ -389,7 +360,6 @@ export default function AdminDashboard() {
 					description: `${singularTab.charAt(0).toUpperCase() + singularTab.slice(1)} added successfully`,
 				});
 			}
-
 			setIsDialogOpen(false);
 			fetchData();
 		} catch (error) {
@@ -400,6 +370,29 @@ export default function AdminDashboard() {
 			toast({
 				title: 'Error',
 				description: `Failed to ${dialogMode === 'edit' ? 'update' : 'add'} ${activeTab}`,
+				variant: 'destructive',
+			});
+		}
+	};
+
+	const handleDelete = async (
+		id: number,
+		type: string,
+	) => {
+		try {
+			await axios.delete(
+				`http://localhost:5000/api/${type}/${id}`,
+			);
+			toast({
+				title: 'Success',
+				description: `${type.charAt(0).toUpperCase() + type.slice(1)} deleted successfully`,
+			});
+			fetchData();
+		} catch (error) {
+			console.error(`Error deleting ${type}:`, error);
+			toast({
+				title: 'Error',
+				description: `Failed to delete ${type}`,
 				variant: 'destructive',
 			});
 		}
@@ -432,7 +425,6 @@ export default function AdminDashboard() {
 								'date_of_birth',
 							)}
 							type="date"
-							placeholder="Date of Birth"
 						/>
 						<Input
 							{...studentForm.register(
@@ -474,7 +466,6 @@ export default function AdminDashboard() {
 								'Incident_date',
 							)}
 							type="date"
-							placeholder="Incident Date"
 						/>
 						<Input
 							{...incidentForm.register(
@@ -558,7 +549,7 @@ export default function AdminDashboard() {
 									onValueChange={
 										field.onChange
 									}
-									value={field.value}
+									value={field.value?.toString()}
 								>
 									<SelectTrigger>
 										<SelectValue placeholder="Select Student" />
@@ -570,9 +561,7 @@ export default function AdminDashboard() {
 													key={
 														student.id
 													}
-													value={
-														student.id
-													}
+													value={student.id.toString()}
 												>
 													{
 														student.first_name
@@ -595,7 +584,7 @@ export default function AdminDashboard() {
 									onValueChange={
 										field.onChange
 									}
-									value={field.value}
+									value={field.value?.toString()}
 								>
 									<SelectTrigger>
 										<SelectValue placeholder="Select Incident" />
@@ -607,9 +596,7 @@ export default function AdminDashboard() {
 													key={
 														incident.id
 													}
-													value={
-														incident.id
-													}
+													value={incident.id.toString()}
 												>
 													{
 														incident.Incident_name
@@ -648,7 +635,6 @@ export default function AdminDashboard() {
 								'Admin_date',
 							)}
 							type="date"
-							placeholder="Date"
 						/>
 						<Input
 							{...adminForm.register(
@@ -690,12 +676,32 @@ export default function AdminDashboard() {
 							)}
 							placeholder="Appeal Reason"
 						/>
-						<Input
-							{...appealForm.register(
-								'Appeal_Status',
-							)}
-							placeholder="Appeal Status"
-						/>
+						<Select
+							onValueChange={(value) =>
+								appealForm.setValue(
+									'Appeal_Status',
+									value,
+								)
+							}
+						>
+							<SelectTrigger>
+								<SelectValue placeholder="Select Status" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="Pending">
+									Pending
+								</SelectItem>
+								<SelectItem value="Under Review">
+									Under Review
+								</SelectItem>
+								<SelectItem value="Approved">
+									Approved
+								</SelectItem>
+								<SelectItem value="Rejected">
+									Rejected
+								</SelectItem>
+							</SelectContent>
+						</Select>
 						<Button type="submit">
 							{dialogMode === 'edit'
 								? 'Update'
@@ -710,7 +716,7 @@ export default function AdminDashboard() {
 	};
 
 	return (
-		<div className="container mx-auto p-6">
+		<div className="container mx-auto p-6 bg-white text-gray-900">
 			<h1 className="text-3xl font-bold mb-6">
 				Admin Dashboard
 			</h1>
@@ -718,25 +724,28 @@ export default function AdminDashboard() {
 				value={activeTab}
 				onValueChange={setActiveTab}
 			>
-				<TabsList>
-					<TabsTrigger value="students">
-						Students
-					</TabsTrigger>
-					<TabsTrigger value="incidents">
-						Incidents
-					</TabsTrigger>
-					<TabsTrigger value="actions">
-						Disciplinary Actions
-					</TabsTrigger>
-					<TabsTrigger value="records">
-						Disciplinary Records
-					</TabsTrigger>
-					<TabsTrigger value="admins">
-						Admins
-					</TabsTrigger>
-					<TabsTrigger value="appeals">
-						Appeals
-					</TabsTrigger>
+				<TabsList className="bg-gray-100 p-1 rounded-lg">
+					{[
+						'students',
+						'incidents',
+						'actions',
+						'records',
+						'admins',
+						'appeals',
+					].map((tab) => (
+						<TabsTrigger
+							key={tab}
+							value={tab}
+							className={`px-4 py-2 rounded-md transition-colors duration-200 ${
+								activeTab === tab
+									? 'bg-customBlue text-white'
+									: 'text-gray-600 hover:bg-gray-200'
+							}`}
+						>
+							{tab.charAt(0).toUpperCase() +
+								tab.slice(1)}
+						</TabsTrigger>
+					))}
 				</TabsList>
 
 				{[
@@ -748,9 +757,9 @@ export default function AdminDashboard() {
 					'appeals',
 				].map((tab) => (
 					<TabsContent key={tab} value={tab}>
-						<Card>
+						<Card className="bg-white">
 							<CardHeader>
-								<CardTitle className="flex justify-between items-center">
+								<CardTitle className="flex justify-between items-center text-gray-900">
 									<span>
 										{tab
 											.charAt(0)
@@ -762,6 +771,7 @@ export default function AdminDashboard() {
 									</span>
 									<Button
 										onClick={handleAdd}
+										className="bg-customBlue text-white hover:bg-customPurple"
 									>
 										Add{' '}
 										{tab.slice(0, -1)}
@@ -772,12 +782,12 @@ export default function AdminDashboard() {
 								<Table>
 									<TableHeader>
 										<TableRow>
+											<TableHead>
+												ID
+											</TableHead>
 											{tab ===
 												'students' && (
 												<>
-													<TableHead>
-														ID
-													</TableHead>
 													<TableHead>
 														Name
 													</TableHead>
@@ -799,9 +809,6 @@ export default function AdminDashboard() {
 												'incidents' && (
 												<>
 													<TableHead>
-														ID
-													</TableHead>
-													<TableHead>
 														Name
 													</TableHead>
 													<TableHead>
@@ -820,9 +827,6 @@ export default function AdminDashboard() {
 												'actions' && (
 												<>
 													<TableHead>
-														ID
-													</TableHead>
-													<TableHead>
 														Incident
 														Type
 													</TableHead>
@@ -839,9 +843,6 @@ export default function AdminDashboard() {
 												'records' && (
 												<>
 													<TableHead>
-														ID
-													</TableHead>
-													<TableHead>
 														Description
 													</TableHead>
 													<TableHead>
@@ -849,20 +850,15 @@ export default function AdminDashboard() {
 													</TableHead>
 													<TableHead>
 														Student
-														ID
 													</TableHead>
 													<TableHead>
 														Incident
-														ID
 													</TableHead>
 												</>
 											)}
 											{tab ===
 												'admins' && (
 												<>
-													<TableHead>
-														ID
-													</TableHead>
 													<TableHead>
 														Name
 													</TableHead>
@@ -873,7 +869,7 @@ export default function AdminDashboard() {
 														Location
 													</TableHead>
 													<TableHead>
-														Security
+														Severity
 														Level
 													</TableHead>
 												</>
@@ -882,16 +878,17 @@ export default function AdminDashboard() {
 												'appeals' && (
 												<>
 													<TableHead>
-														ID
-													</TableHead>
-													<TableHead>
-														Name
+														Appeal
+														Subject
 													</TableHead>
 													<TableHead>
 														Reason
 													</TableHead>
 													<TableHead>
 														Status
+													</TableHead>
+													<TableHead>
+														StudentID
 													</TableHead>
 												</>
 											)}
@@ -921,14 +918,7 @@ export default function AdminDashboard() {
 														<TableCell>
 															{new Date(
 																student.date_of_birth,
-															).toLocaleDateString(
-																'en-GB',
-																{
-																	year: 'numeric',
-																	month: 'short',
-																	day: '2-digit',
-																},
-															)}
+															).toLocaleDateString()}
 														</TableCell>
 														<TableCell>
 															{
@@ -991,14 +981,7 @@ export default function AdminDashboard() {
 														<TableCell>
 															{new Date(
 																incident.Incident_date,
-															).toLocaleDateString(
-																'en-GB',
-																{
-																	year: 'numeric',
-																	month: 'short',
-																	day: '2-digit',
-																},
-															)}
+															).toLocaleDateString()}
 														</TableCell>
 														<TableCell>
 															{
@@ -1221,14 +1204,7 @@ export default function AdminDashboard() {
 														<TableCell>
 															{new Date(
 																admin.Admin_date,
-															).toLocaleDateString(
-																'en-GB',
-																{
-																	year: 'numeric',
-																	month: 'short',
-																	day: '2-digit',
-																},
-															)}
+															).toLocaleDateString()}
 														</TableCell>
 														<TableCell>
 															{
@@ -1297,6 +1273,37 @@ export default function AdminDashboard() {
 															{
 																appeal.Appeal_Status
 															}
+														</TableCell>
+														<TableCell>
+															<Popover>
+																<PopoverTrigger>
+																	{
+																		appeal.StudentID
+																	}
+																</PopoverTrigger>
+																<PopoverContent>
+																	{
+																		students.find(
+																			(
+																				s,
+																			) =>
+																				s.id ===
+																				appeal.StudentID,
+																		)
+																			?.first_name
+																	}{' '}
+																	{
+																		students.find(
+																			(
+																				s,
+																			) =>
+																				s.id ===
+																				appeal.StudentID,
+																		)
+																			?.last_name
+																	}
+																</PopoverContent>
+															</Popover>
 														</TableCell>
 														<TableCell>
 															<Button

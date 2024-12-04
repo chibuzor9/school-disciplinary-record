@@ -1,8 +1,8 @@
 CREATE DATABASE cosc333_db2; 
 USE cosc333_db2; 
 
-CREATE TABLE Students( 
-    StudentID INT PRIMARY KEY AUTO_INCREMENT, 
+CREATE TABLE student( 
+    id INT PRIMARY KEY AUTO_INCREMENT, 
     first_name VARCHAR(50) NOT NULL, 
     last_name VARCHAR(50) NOT NULL, 
     date_of_birth DATE NOT NULL, 
@@ -11,7 +11,7 @@ CREATE TABLE Students(
 ); 
 
 CREATE TABLE Incident( 
-    IncidentID INT PRIMARY KEY AUTO_INCREMENT, 
+    id INT PRIMARY KEY AUTO_INCREMENT, 
     Incident_name VARCHAR(50) NOT NULL, 
     Incident_date DATE NOT NULL, 
     Incident_location VARCHAR(50) NOT NULL, 
@@ -19,7 +19,7 @@ CREATE TABLE Incident(
 ); 
 
 CREATE TABLE Disciplinary_Record ( 
-    recordID INT PRIMARY KEY AUTO_INCREMENT, 
+    id INT PRIMARY KEY AUTO_INCREMENT, 
     Disciplinary_Record_Description TEXT NOT NULL, 
     Disciplinary_Record_status VARCHAR(50) NOT NULL, 
     StudentID INT, 
@@ -29,14 +29,14 @@ CREATE TABLE Disciplinary_Record (
 ); 
 
 CREATE TABLE Disciplinary_Action ( 
-    DisrActionID INT PRIMARY KEY AUTO_INCREMENT, 
+    id INT PRIMARY KEY AUTO_INCREMENT, 
     Disciplinary_Incident_Type VARCHAR(50) NOT NULL, 
     Disciplinary_action_Taken TEXT NOT NULL, 
     Disciplinary_Terms VARCHAR(50) NOT NULL 
 ); 
 
 CREATE TABLE Admin ( 
-    AdminID INT PRIMARY KEY AUTO_INCREMENT, 
+    id INT PRIMARY KEY AUTO_INCREMENT, 
     Admin_name VARCHAR(50) NOT NULL, 
     Admin_date DATE NOT NULL, 
     Admin_location VARCHAR(50) NOT NULL, 
@@ -44,7 +44,7 @@ CREATE TABLE Admin (
 ); 
 
 CREATE TABLE Appeal (
-    AppealID INT PRIMARY KEY AUTO_INCREMENincidentT, 
+    id INT PRIMARY KEY AUTO_INCREMENT, 
     Appeal_name VARCHAR(50) NOT NULL, 
     Appeal_reason TEXT NOT NULL, 
     Appeal_Status VARCHAR(50) NOT NULL 

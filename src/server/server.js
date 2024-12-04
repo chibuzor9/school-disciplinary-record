@@ -9,6 +9,7 @@ app.use(cors());
 app.use(express.json());
 
 let db;
+let db2;
 
 // Database connection function
 async function connectToDatabase() {
@@ -18,6 +19,12 @@ async function connectToDatabase() {
 			user: 'root',
 			password: '',
 			database: 'cosc333_db2',
+		});
+		db2 = await createConnection({
+			host: 'localhost',
+			user: 'root',
+			password: '',
+			database: 'users_db2',
 		});
 		console.log('Connected to MySQL database');
 	} catch (err) {
@@ -212,6 +219,39 @@ app.get('/api/student', async (req, res) => {
 	}
 });
 
+app.get('/api/authenticate', async (req, res) => {
+	try {
+		const [results] = await db2.query(
+			'SELECT * FROM users',
+		);
+		res.json(results);
+	} catch (err) {
+		console.error('Error fetching students:', err);
+		res.status(500).json({ error: 'Database error' });
+	}
+});
+
+app.get('/api/authenticate/:id', async (req, res) => {
+	try {
+		const [results] = await db2.query(
+			`SELECT * FROM users WHERE id = ?`,
+			[req.params.id],
+		);
+		if (results.length > 0) {
+			res.json(results[0]);
+		} else {
+			res.status(404).json({
+				error: 'Not found',
+			});
+		}
+	} catch (err) {
+		console.error(`Error fetching users entry:`, err);
+		res.status(500).json({
+			error: 'Database error',
+		});
+	}
+});
+
 app.post('/api/student', async (req, res) => {
 	const {
 		first_name,
@@ -282,6 +322,35 @@ app.post('/api/incident', async (req, res) => {
 		res.status(500).json({ error: 'Database error' });
 	}
 });
+
+// Add this new endpoint to fetch student incidents
+app.get(
+	'/api/student-incidents/:studentId',
+	async (req, res) => {
+		try {
+			const studentId = req.params.studentId;
+
+			// Join the incident and record tables to get incident details
+			const [results] = await db.query(
+				`SELECT i.id, i.Incident_name, i.Incident_date, i.Incident_location, i.Incident_sl
+		 FROM incident i
+		 INNER JOIN record r ON i.id = r.IncidentID
+		 WHERE r.StudentID = ?`,
+				[studentId],
+			);
+
+			res.json(results);
+		} catch (err) {
+			console.error(
+				'Error fetching student incidents:',
+				err,
+			);
+			res.status(500).json({
+				error: 'Database error',
+			});
+		}
+	},
+);
 
 // Specific routes for Disciplinary Actions
 app.get('/api/action', async (req, res) => {
@@ -431,21 +500,21 @@ app.get('/api/appeal', async (req, res) => {
 	}
 });
 
-app.post('/api/appeal', async (req, res) => {
-	const { Appeal_name, Appeal_reason, Appeal_Status } =
-		req.body;
+
+app.post('/api/appeals', async (req, res) => {
+	const { Appeal_name, Appeal_reason, Appeal_Status, IncidentID, StudentID } = req.body;
 	try {
 		const [result] = await db.query(
-			'INSERT INTO Appeal (Appeal_name, Appeal_reason, Appeal_Status) VALUES (?, ?, ?)',
-			[Appeal_name, Appeal_reason, Appeal_Status],
+			'INSERT INTO Appeal (Appeal_name, Appeal_reason, Appeal_Status, IncidentID, StudentID) VALUES (?, ?, ?, ?, ?)',
+			[Appeal_name, Appeal_reason, Appeal_Status, IncidentID, StudentID]
 		);
-		res.json({
+		res.status(201).json({
 			success: true,
-			message: 'Appeal added successfully',
-			appealId: result.insertId,
+			message: 'Appeal submitted successfully',
+			appealId: result.insertId
 		});
 	} catch (err) {
-		console.error('Error adding appeal:', err);
+		console.error('Error submitting appeal:', err);
 		res.status(500).json({ error: 'Database error' });
 	}
 });

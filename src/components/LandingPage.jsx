@@ -227,10 +227,10 @@ const LandingPage = () => {
 							<button
 								className="w-full h-16 px-4 py-2 bg-customBlue text-white border border-customPurple rounded-lg hover:bg-customPurple hover:border-customBlue transition-colors duration-300"
 								onClick={() =>
-									navigate('/staff')
+									navigate('/login')
 								}
 							>
-								Staff
+								Admin
 							</button>
 							<span className="hidden group-hover:inline-block absolute right-3 top-1/2 -translate-y-1/2 transform transition-transform animate-bounce">
 								→
@@ -240,7 +240,7 @@ const LandingPage = () => {
 							<button
 								className="w-full px-4 py-2 h-16 bg-customBlue text-white border border-customPurple rounded-lg hover:bg-customPurple hover:border-customBlue transition-colors duration-300"
 								onClick={() =>
-									navigate('/student')
+									navigate('/login')
 								}
 							>
 								Student

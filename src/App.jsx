@@ -6,20 +6,19 @@ import {
 
 import LandingPage from './components/LandingPage';
 import LostPage from './components/LostPage';
-import Student from './components/Student';
-import Staff from './components/Staff';
+import StudentDashboard from './components/StudentDash';
 import AdminDashboard from './components/AdminDash';
+import Login from './components/Login';
 
 const App = () => {
 	return (
 		<Router>
 			<Routes>
 				<Route path="/" element={<LandingPage />} />
-				<Route path="/staff" element={<Staff />} />
-
+				<Route path="/login" element={<Login />} />
 				<Route
 					path="/student"
-					element={<Student />}
+					element={<StudentDashboard />}
 				/>
 				<Route
 					path="/admin"

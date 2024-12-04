@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,8 +23,14 @@ import {
 import { useToast } from './ui/use-toast';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from './ui/select';
 import axios from 'axios';
-import React from 'react';
 
 const appealSchema = z.object({
 	Appeal_name: z
@@ -38,10 +45,11 @@ const appealSchema = z.object({
 	Appeal_Status: z
 		.string()
 		.min(1, 'Appeal status is required'),
+	IncidentID: z.string().min(1, 'Incident is required'),
 });
 
 interface Incident {
-	IncidentID: number;
+	id: number;
 	Incident_name: string;
 	Incident_date: string;
 	Incident_location: string;
@@ -62,24 +70,33 @@ export default function StudentDashboard() {
 			Appeal_name: '',
 			Appeal_reason: '',
 			Appeal_Status: 'Pending',
+			IncidentID: '',
 		},
 	});
 
 	useEffect(() => {
-		const fetchData = async () => {
+		const fetchIncidents = async () => {
 			try {
 				const storedStudentId =
-					localStorage.getItem('studentId') ||
-					'STU001';
+					localStorage.getItem('studentId');
+				if (!storedStudentId) {
+					toast({
+						title: 'Error',
+						description:
+							'No student ID found. Please login again.',
+						variant: 'destructive',
+					});
+					return;
+				}
 				setStudentId(storedStudentId);
 
 				const response = await axios.get(
-					`http://localhost:5000/api/incidents`,
+					`http://localhost:5000/api/student-incidents/${storedStudentId}`,
 				);
 				setIncidents(response.data);
 			} catch (error) {
 				console.error(
-					'Error fetching data:',
+					'Error fetching incidents:',
 					error,
 				);
 				toast({
@@ -93,7 +110,7 @@ export default function StudentDashboard() {
 			}
 		};
 
-		fetchData();
+		fetchIncidents();
 	}, [toast]);
 
 	const onSubmit = async (
@@ -102,7 +119,10 @@ export default function StudentDashboard() {
 		try {
 			await axios.post(
 				'http://localhost:5000/api/appeals',
-				data,
+				{
+					...data,
+					StudentID: studentId,
+				},
 			);
 			toast({
 				title: 'Success',
@@ -123,7 +143,13 @@ export default function StudentDashboard() {
 		}
 	};
 
-	if (loading) return <p>Loading...</p>;
+	if (loading) {
+		return (
+			<div className="flex items-center justify-center p-6">
+				Loading...
+			</div>
+		);
+	}
 
 	return (
 		<div className="container mx-auto p-6">
@@ -141,10 +167,7 @@ export default function StudentDashboard() {
 							<TableHeader>
 								<TableRow>
 									<TableHead>
-										ID
-									</TableHead>
-									<TableHead>
-										Name
+										Incident Name
 									</TableHead>
 									<TableHead>
 										Date
@@ -162,14 +185,9 @@ export default function StudentDashboard() {
 									(incident) => (
 										<TableRow
 											key={
-												incident.IncidentID
+												incident.id
 											}
 										>
-											<TableCell>
-												{
-													incident.IncidentID
-												}
-											</TableCell>
 											<TableCell>
 												{
 													incident.Incident_name
@@ -196,7 +214,9 @@ export default function StudentDashboard() {
 							</TableBody>
 						</Table>
 					) : (
-						<p>No incidents found.</p>
+						<p className="text-center py-4">
+							No incidents found.
+						</p>
 					)}
 				</CardContent>
 			</Card>
@@ -218,6 +238,34 @@ export default function StudentDashboard() {
 							)}
 							placeholder="Appeal Name"
 						/>
+						<Select
+							onValueChange={(value) =>
+								form.setValue(
+									'IncidentID',
+									value,
+								)
+							}
+						>
+							<SelectTrigger>
+								<SelectValue placeholder="Select Incident" />
+							</SelectTrigger>
+							<SelectContent>
+								{incidents.map(
+									(incident) => (
+										<SelectItem
+											key={
+												incident.id
+											}
+											value={incident.id.toString()}
+										>
+											{
+												incident.Incident_name
+											}
+										</SelectItem>
+									),
+								)}
+							</SelectContent>
+						</Select>
 						<Textarea
 							{...form.register(
 								'Appeal_reason',
@@ -235,7 +283,7 @@ export default function StudentDashboard() {
 						/>
 						<Button
 							type="submit"
-							className="w-1/2 bg-customBlue hover:border-customPurple text-white"
+							className="w-full bg-blue-600 hover:bg-blue-700 text-white"
 						>
 							Submit Appeal
 						</Button>
