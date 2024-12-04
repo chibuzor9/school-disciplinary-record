@@ -283,7 +283,7 @@ export default function StudentDashboard() {
 						/>
 						<Button
 							type="submit"
-							className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+							className="w-full bg-customBlue hover:border-customPurple text-white"
 						>
 							Submit Appeal
 						</Button>
